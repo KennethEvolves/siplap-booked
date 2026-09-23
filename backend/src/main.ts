@@ -1,8 +1,34 @@
+import 'dotenv/config';
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 4001);
+
+  app.enableCors({
+    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE',
+      'OPTIONS',
+    ],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+    ],
+  });
+
+  const port = Number(process.env.PORT) || 4001;
+
+  await app.listen(port);
+
+  console.log(
+    `🚀 Backend ejecutándose en http://localhost:${port}`,
+  );
 }
-await bootstrap();
+
+bootstrap();

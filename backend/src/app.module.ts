@@ -1,16 +1,26 @@
 import { Module } from '@nestjs/common';
+
+import { PrismaModule } from './prisma/prisma.module.js';
+import { AuthModule } from './auth/infrastructure/auth.module.js';
+import { UsersModule } from './users/infrastructure/users.module.js';
+import { RolesModule } from './roles/infrastructure/roles.module.js';
+import { PermissionsModule } from './permissions/infrastructure/permissions.module.js';
+
 import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
-
-
 
 @Module({
   imports: [
-    // Distributed tracing, auto-correlated logs, request/job metrics, error
-    // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
-    
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    PermissionsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+
+  controllers: [
+    AppController,
+  ],
+
+  providers: [],
 })
 export class AppModule {}

@@ -15,7 +15,6 @@ import {
 import type { Request } from 'express';
 
 import { LoginSuperUserUseCase } from '../application/use-cases/login-super-user.use-case.js';
-
 import {
   InactiveUserError,
   InvalidCredentialsError,
@@ -26,8 +25,9 @@ import {
   JwtAuthGuard,
   type AuthenticatedUser,
 } from './jwt-auth.guard.js';
-
 import { SuperUserGuard } from './super-user.guard.js';
+import { RolesGuard } from './roles.guard.js';
+import { Roles } from './roles.decorator.js';
 
 interface LoginRequest {
   email: string;
@@ -102,7 +102,7 @@ export class AuthController {
   }
 
   // =========================
-  // GET /auth/super-user-test
+  // GET /auth/super-user-test (Guard anterior)
   // =========================
   @Get('super-user-test')
   @UseGuards(JwtAuthGuard, SuperUserGuard)
@@ -119,6 +119,36 @@ export class AuthController {
         email: request.user.email,
         roles: request.user.roles,
       },
+    };
+  }
+
+  // ====================================================
+  // NUEVAS RUTAS CON DECORADORES DINÁMICOS RBAC-03
+  // ====================================================
+
+  // Caso 1: Requiere SUPERUSUARIO -> Tu token actual debe dar 200 OK
+  @Get('roles-test/super')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPERUSUARIO')
+  rolesTestSuper(
+    @Req()
+    request: Request & {
+      user: AuthenticatedUser;
+    },
+  ) {
+    return {
+      message: 'Acceso concedido con decorador @Roles(SUPERUSUARIO)',
+      user: request.user,
+    };
+  }
+
+  // Caso 2: Requiere COORDINADOR -> Tu token actual DEBE devolver 403 Forbidden
+  @Get('roles-test/coordinador')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('COORDINADOR')
+  rolesTestCoordinador() {
+    return {
+      message: 'Solo coordinadores pueden ver esto',
     };
   }
 }

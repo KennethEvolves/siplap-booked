@@ -31,4 +31,7 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error('No se pudo iniciar el backend', error);
+  process.exitCode = 1;
+});

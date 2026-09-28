@@ -1,8 +1,4 @@
-export interface CreateUserDto {
-  username?: string;
-  email: string;
-  password: string;
-}
+export type { CreateUser as CreateUserDto } from '@shared/contracts';
 
 export interface CreateUserResultDto {
   userId: string;

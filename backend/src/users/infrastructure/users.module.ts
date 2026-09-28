@@ -1,3 +1,5 @@
+import { UpdateUserUseCase } from '../application/use-cases/update-user.use-case.js';
+import { DeleteUserUseCase } from '../application/use-cases/delete-user.use-case.js';
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module.js';
@@ -25,16 +27,23 @@ import { AssignRoleToUserUseCase } from '../application/use-cases/assign-role-to
 import { UsersController } from '../presentation/users.controller.js';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AuthModule,
-  ],
+  imports: [PrismaModule, AuthModule],
 
-  controllers: [
-    UsersController,
-  ],
+  controllers: [UsersController],
 
   providers: [
+    {
+      provide: UpdateUserUseCase,
+      useFactory: (repository: UsersRepository, encoder: PasswordEncoderPort) =>
+        new UpdateUserUseCase(repository, encoder),
+      inject: [UsersRepository, PasswordEncoderPort],
+    },
+    {
+      provide: DeleteUserUseCase,
+      useFactory: (repository: UsersRepository) =>
+        new DeleteUserUseCase(repository),
+      inject: [UsersRepository],
+    },
     {
       provide: UsersRepository,
       useClass: PrismaUsersRepository,
@@ -42,71 +51,46 @@ import { UsersController } from '../presentation/users.controller.js';
 
     {
       provide: PasswordEncoderPort,
-      useClass:
-        BcryptPasswordEncoder,
+      useClass: BcryptPasswordEncoder,
     },
 
     {
       provide: UserRoleRepository,
-      useClass:
-        PrismaUserRoleRepository,
+      useClass: PrismaUserRoleRepository,
     },
 
     {
       provide: CreateUserUseCase,
 
       useFactory: (
-        usersRepository:
-          UsersRepository,
+        usersRepository: UsersRepository,
 
-        passwordEncoder:
-          PasswordEncoderPort,
+        passwordEncoder: PasswordEncoderPort,
       ) => {
-        return new CreateUserUseCase(
-          usersRepository,
-          passwordEncoder,
-        );
+        return new CreateUserUseCase(usersRepository, passwordEncoder);
       },
 
-      inject: [
-        UsersRepository,
-        PasswordEncoderPort,
-      ],
+      inject: [UsersRepository, PasswordEncoderPort],
     },
 
     {
       provide: GetUsersUseCase,
 
-      useFactory: (
-        usersRepository:
-          UsersRepository,
-      ) => {
-        return new GetUsersUseCase(
-          usersRepository,
-        );
+      useFactory: (usersRepository: UsersRepository) => {
+        return new GetUsersUseCase(usersRepository);
       },
 
-      inject: [
-        UsersRepository,
-      ],
+      inject: [UsersRepository],
     },
 
     {
-      provide:
-        AssignRoleToUserUseCase,
+      provide: AssignRoleToUserUseCase,
 
-      useFactory: (
-        userRoleRepository:
-          UserRoleRepository,
-      ) => {
-        return new AssignRoleToUserUseCase(
-          userRoleRepository,
-        );
+      useFactory: (userRoleRepository: UserRoleRepository) => {
+        return new AssignRoleToUserUseCase(userRoleRepository);
       },
 
-      inject: [
-        UserRoleRepository,
-      ],
+      inject: [UserRoleRepository],
     },
   ],
 })

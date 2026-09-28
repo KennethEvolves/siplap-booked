@@ -1,6 +1,4 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  'http://localhost:4001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
 export class ApiError extends Error {
   constructor(
@@ -13,33 +11,20 @@ export class ApiError extends Error {
   }
 }
 
-export function getToken():
-  | string
-  | null {
-  if (
-    typeof window === 'undefined'
-  ) {
+export function getToken(): string | null {
+  if (typeof window === 'undefined') {
     return null;
   }
 
-  return localStorage.getItem(
-    'accessToken',
-  );
+  return localStorage.getItem('accessToken');
 }
 
-export function saveToken(
-  token: string,
-) {
-  localStorage.setItem(
-    'accessToken',
-    token,
-  );
+export function saveToken(token: string) {
+  localStorage.setItem('accessToken', token);
 }
 
 export function removeToken() {
-  localStorage.removeItem(
-    'accessToken',
-  );
+  localStorage.removeItem('accessToken');
 }
 
 export async function apiFetch<T>(
@@ -47,41 +32,29 @@ export async function apiFetch<T>(
   options: RequestInit = {},
   requiresAuth = true,
 ): Promise<T> {
-  const headers =
-    new Headers(options.headers);
+  const headers = new Headers(options.headers);
 
   if (options.body) {
-    headers.set(
-      'Content-Type',
-      'application/json',
-    );
+    headers.set('Content-Type', 'application/json');
   }
 
   if (requiresAuth) {
     const token = getToken();
 
     if (token) {
-      headers.set(
-        'Authorization',
-        `Bearer ${token}`,
-      );
+      headers.set('Authorization', `Bearer ${token}`);
     }
   }
 
-  const response =
-    await fetch(
-      `${API_URL}${path}`,
-      {
-        ...options,
-        headers,
-        cache: 'no-store',
-      },
-    );
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    cache: 'no-store',
+  });
 
-  const text =
-    await response.text();
+  const text = await response.text();
 
-  let data: any = {};
+  let data: unknown = null;
 
   if (text) {
     try {
@@ -95,8 +68,11 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     throw new ApiError(
-      data?.message ??
-        `Error HTTP ${response.status}`,
+      typeof data === 'object' && data !== null && 'message' in data
+        ? Array.isArray(data.message)
+          ? data.message.join('. ')
+          : String(data.message)
+        : `Error HTTP ${response.status}`,
 
       response.status,
     );

@@ -205,16 +205,16 @@ export type permissionsOrderByWithRelationInput = {
 
 export type permissionsWhereUniqueInput = Prisma.AtLeast<{
   permission_id?: string
+  slug?: string
   AND?: Prisma.permissionsWhereInput | Prisma.permissionsWhereInput[]
   OR?: Prisma.permissionsWhereInput[]
   NOT?: Prisma.permissionsWhereInput | Prisma.permissionsWhereInput[]
   name?: Prisma.StringNullableFilter<"permissions"> | string | null
-  slug?: Prisma.StringFilter<"permissions"> | string
   description?: Prisma.StringNullableFilter<"permissions"> | string | null
   created_at?: Prisma.DateTimeNullableFilter<"permissions"> | Date | string | null
   updated_at?: Prisma.DateTimeNullableFilter<"permissions"> | Date | string | null
   role_permissions?: Prisma.Role_permissionsListRelationFilter
-}, "permission_id">
+}, "permission_id" | "slug">
 
 export type permissionsOrderByWithAggregationInput = {
   permission_id?: Prisma.SortOrder

@@ -1,3 +1,15 @@
+import { Patch, Delete, UseFilters } from '@nestjs/common';
+import {
+  createRoleSchema,
+  updateRoleSchema,
+  uuidSchema,
+  type UpdateRole,
+} from '@shared/contracts';
+import { ZodValidationPipe } from '../../common/presentation/zod-validation.pipe.js';
+import { RbacExceptionFilter } from '../../common/presentation/rbac-exception.filter.js';
+import { UpdateRoleUseCase } from '../application/use-cases/update-role.use-case.js';
+import { DeleteRoleUseCase } from '../application/use-cases/delete-role.use-case.js';
+
 import {
   BadRequestException,
   Body,
@@ -36,31 +48,26 @@ import { JwtAuthGuard } from '../../auth/presentation/jwt-auth.guard.js';
 
 import { SuperUserGuard } from '../../auth/presentation/super-user.guard.js';
 
+@UseFilters(RbacExceptionFilter)
 @Controller('roles')
 export class RolesController {
   constructor(
-    private readonly createRoleUseCase:
-      CreateRoleUseCase,
+    private readonly updateUseCase: UpdateRoleUseCase,
+    private readonly deleteUseCase: DeleteRoleUseCase,
+    private readonly createRoleUseCase: CreateRoleUseCase,
 
-    private readonly getRolesUseCase:
-      GetRolesUseCase,
+    private readonly getRolesUseCase: GetRolesUseCase,
 
-    private readonly assignPermissionToRoleUseCase:
-      AssignPermissionToRoleUseCase,
+    private readonly assignPermissionToRoleUseCase: AssignPermissionToRoleUseCase,
   ) {}
 
   @Get()
-  @UseGuards(
-    JwtAuthGuard,
-    SuperUserGuard,
-  )
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
   async getAll() {
-    const roles =
-      await this.getRolesUseCase.execute();
+    const roles = await this.getRolesUseCase.execute();
 
     return {
-      message:
-        'Roles obtenidos correctamente',
+      message: 'Roles obtenidos correctamente',
 
       total: roles.length,
 
@@ -70,114 +77,86 @@ export class RolesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(
-    JwtAuthGuard,
-    SuperUserGuard,
-  )
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
   async create(
-    @Body() body: CreateRoleDto,
+    @Body(new ZodValidationPipe(createRoleSchema)) body: CreateRoleDto,
   ) {
     try {
-      const role =
-        await this.createRoleUseCase.execute(
-          body,
-        );
+      const role = await this.createRoleUseCase.execute(body);
 
       return {
-        message:
-          'Rol creado correctamente',
+        message: 'Rol creado correctamente',
 
         role,
       };
     } catch (error) {
-      if (
-        error instanceof
-        RoleAlreadyExistsError
-      ) {
-        throw new ConflictException(
-          error.message,
-        );
+      if (error instanceof RoleAlreadyExistsError) {
+        throw new ConflictException(error.message);
       }
 
-      if (
-        error instanceof
-        InvalidRoleDataError
-      ) {
-        throw new BadRequestException(
-          error.message,
-        );
+      if (error instanceof InvalidRoleDataError) {
+        throw new BadRequestException(error.message);
       }
 
       throw error;
     }
   }
 
-  @Post(
-    ':roleId/permissions/:permissionId',
-  )
+  @Post(':roleId/permissions/:permissionId')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(
-    JwtAuthGuard,
-    SuperUserGuard,
-  )
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
   async assignPermission(
-    @Param('roleId')
+    @Param('roleId', new ZodValidationPipe(uuidSchema))
     roleId: string,
 
-    @Param('permissionId')
+    @Param('permissionId', new ZodValidationPipe(uuidSchema))
     permissionId: string,
   ) {
     try {
-      const assignment =
-        await this.assignPermissionToRoleUseCase.execute({
-          roleId,
-          permissionId,
-        });
+      const assignment = await this.assignPermissionToRoleUseCase.execute({
+        roleId,
+        permissionId,
+      });
 
       return {
-        message:
-          'Permiso asignado al rol correctamente',
+        message: 'Permiso asignado al rol correctamente',
 
         assignment,
       };
     } catch (error) {
-      if (
-        error instanceof
-        RoleNotFoundError
-      ) {
-        throw new NotFoundException(
-          error.message,
-        );
+      if (error instanceof RoleNotFoundError) {
+        throw new NotFoundException(error.message);
       }
 
-      if (
-        error instanceof
-        PermissionNotFoundError
-      ) {
-        throw new NotFoundException(
-          error.message,
-        );
+      if (error instanceof PermissionNotFoundError) {
+        throw new NotFoundException(error.message);
       }
 
-      if (
-        error instanceof
-        RoleAlreadyHasPermissionError
-      ) {
-        throw new ConflictException(
-          error.message,
-        );
+      if (error instanceof RoleAlreadyHasPermissionError) {
+        throw new ConflictException(error.message);
       }
 
-      if (
-        error instanceof
-        InvalidRolePermissionDataError
-      ) {
-        throw new BadRequestException(
-          error.message,
-        );
+      if (error instanceof InvalidRolePermissionDataError) {
+        throw new BadRequestException(error.message);
       }
 
       throw error;
     }
+  }
+
+  @Patch(':roleId')
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async update(
+    @Param('roleId', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body(new ZodValidationPipe(updateRoleSchema)) body: UpdateRole,
+  ) {
+    const role = await this.updateUseCase.execute(id, body);
+    return { message: 'rol actualizado correctamente', role };
+  }
+  @Delete(':roleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async delete(@Param('roleId', new ZodValidationPipe(uuidSchema)) id: string) {
+    await this.deleteUseCase.execute(id);
   }
 }

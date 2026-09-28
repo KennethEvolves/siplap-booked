@@ -4,14 +4,14 @@ export const uuidSchema = z.uuid();
 const description = z.string().trim().max(255);
 const password = z
   .string()
-  .min(8)
+  .min(8, 'La contraseña debe tener al menos 8 caracteres') // <-- Agregamos el mensaje aquí
   .refine(
     (value) => new TextEncoder().encode(value).length <= 72,
     'La contraseña no puede superar los 72 bytes',
   );
 export const createUserSchema = z.strictObject({
-  username: z.string().trim().max(50).optional(),
-  email: z.string().trim().toLowerCase().max(150).pipe(z.email()),
+username: z.string().trim().min(3, 'El nombre de usuario debe tener al menos 3 caracteres').max(50).optional(),
+email: z.string().trim().toLowerCase().max(150).pipe(z.email()),
   password,
 });
 export const createRoleSchema = z.strictObject({

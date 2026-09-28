@@ -1,48 +1,55 @@
 // src/components/PermissionsTab.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
+import { createPermissionSchema, updatePermissionSchema, type ZodType } from '@shared/contracts';
 
-interface Permission {
-  permission_id: string;
-  name: string;
+interface PermissionItem {
+  permissionId: string;
+  name: string | null;
   slug: string;
-  description: string;
+  description: string | null;
 }
 
 export default function PermissionsTab() {
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  
-  // Campos basados en la tabla permissions del SQL
-  const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    description: '',
-  });
+  const [permissions, setPermissions] = useState<PermissionItem[]>([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  // Estados de edición y formulario
+  const [editingPermission, setEditingPermission] = useState<string | null>(null);
+  const [permissionName, setPermissionName] = useState('');
+  const [permissionSlug, setPermissionSlug] = useState('');
+  const [permissionDescription, setPermissionDescription] = useState('');
+
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Validación con Zod del paquete compartido
+  function validatedBody(schema: ZodType, value: unknown) {
+    const result = schema.safeParse(value);
+    if (!result.success) {
+      throw new Error(result.error.issues.map((issue) => issue.message).join('. '));
+    }
+    return JSON.stringify(result.data);
+  }
 
   const fetchPermissions = async () => {
     try {
-      setLoading(true);
-      const response: any = await apiFetch('/permissions', { method: 'GET' });
-      
-      // El backend nos manda los permisos dentro de la propiedad .permissions
-      if (response && Array.isArray(response.permissions)) {
-        setPermissions(response.permissions);
-      } else if (Array.isArray(response)) {
-        setPermissions(response);
-      } else {
-        setPermissions([]);
+      setLoadingPermissions(true);
+      const res: any = await apiFetch('/permissions', { method: 'GET' });
+      if (res && Array.isArray(res.permissions)) {
+        setPermissions(res.permissions);
+      } else if (Array.isArray(res)) {
+        setPermissions(res);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error al cargar permisos:', err);
-      setPermissions([]);
     } finally {
-      setLoading(false);
+      setLoadingPermissions(false);
     }
   };
 
@@ -50,81 +57,111 @@ export default function PermissionsTab() {
     fetchPermissions();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const cancelEdit = () => {
+    setEditingPermission(null);
+    setPermissionName('');
+    setPermissionSlug('');
+    setPermissionDescription('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateOrUpdatePermission = async (e: FormEvent) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setBusy(true);
+
     try {
-      await apiFetch('/permissions', {
-        method: 'POST',
-        body: JSON.stringify(formData),
+      const bodyData = validatedBody(
+        editingPermission ? updatePermissionSchema : createPermissionSchema,
+        {
+          name: permissionName,
+          slug: permissionSlug,
+          description: permissionDescription,
+        }
+      );
+
+      await apiFetch(editingPermission ? `/permissions/${editingPermission}` : '/permissions', {
+        method: editingPermission ? 'PATCH' : 'POST',
+        body: bodyData,
       });
-      setFormData({ name: '', slug: '', description: '' });
-      setShowForm(false);
-      fetchPermissions(); // Recargamos la lista
+
+      setSuccess(editingPermission ? '¡Permiso actualizado con éxito!' : '¡Permiso creado con éxito!');
+      cancelEdit();
+      fetchPermissions();
     } catch (err: any) {
-      alert(err.message || 'Error al crear el permiso');
+      setError(err.message || 'Error al guardar el permiso');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async (id: string, slug: string) => {
+    if (confirm(`¿Estás seguro de eliminar el permiso "${slug}"?`)) {
+      try {
+        await apiFetch(`/permissions/${id}`, { method: 'DELETE' });
+        if (editingPermission === id) cancelEdit();
+        fetchPermissions();
+      } catch (err: any) {
+        alert(err.message || 'No se pudo eliminar el permiso');
+      }
     }
   };
 
   return (
-    <div>
-      <Card title="Gestión de Permisos">
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-600">Administra los permisos detallados que se asignarán a los roles del sistema.</p>
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancelar' : '+ Nuevo Permiso'}
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <Card title={editingPermission ? 'Editar Permiso' : 'Gestión de Permisos'}>
+        <form onSubmit={handleCreateOrUpdatePermission} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
+          <h3 className="font-bold text-gray-700">{editingPermission ? 'Modificar Permiso' : 'Registrar Nuevo Permiso'}</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+            <input 
+              type="text" 
+              value={permissionName}
+              onChange={(e) => setPermissionName(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
 
-        {/* Formulario para nuevo permiso */}
-        {showForm && (
-          <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
-            <h3 className="font-bold text-gray-700">Crear Nuevo Permiso</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del permiso</label>
-              <input 
-                type="text" 
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                placeholder="Ej. Crear Usuarios"
-                className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slug (Identificador único)</label>
-              <input 
-                type="text" 
-                name="slug"
-                value={formData.slug}
-                onChange={handleInputChange}
-                required
-                placeholder="Ej. users:create"
-                className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-              <textarea 
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Breve detalle de lo que permite hacer..."
-                className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
-            <Button variant="primary" type="submit">Guardar Permiso</Button>
-          </form>
-        )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Slug (ej. users.create)</label>
+            <input 
+              type="text" 
+              value={permissionSlug}
+              onChange={(e) => setPermissionSlug(e.target.value)}
+              required
+              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
 
-        {/* Tabla de Permisos */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea 
+              value={permissionDescription}
+              onChange={(e) => setPermissionDescription(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black min-h-[70px]"
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {success && <p className="text-green-600 text-sm">{success}</p>}
+
+          <div className="flex space-x-2">
+            <Button variant="primary" type="submit" disabled={busy}>
+              {busy ? 'Guardando...' : editingPermission ? 'Actualizar Permiso' : 'Guardar Permiso'}
+            </Button>
+            {editingPermission && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+
         <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -136,18 +173,34 @@ export default function PermissionsTab() {
               </tr>
             </thead>
             <tbody className="text-sm text-gray-600">
-              {loading ? (
+              {loadingPermissions ? (
                 <tr><td colSpan={4} className="p-4 text-center text-gray-400">Cargando permisos...</td></tr>
               ) : permissions.length === 0 ? (
                 <tr><td colSpan={4} className="p-4 text-center text-gray-400">No hay permisos registrados.</td></tr>
               ) : (
-                permissions.map((perm) => (
-                  <tr key={perm.permission_id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 font-medium text-gray-800">{perm.name}</td>
-                    <td className="p-3 font-mono text-xs bg-gray-100 rounded px-1">{perm.slug}</td>
-                    <td className="p-3">{perm.description || 'Sin descripción'}</td>
-                    <td className="p-3 text-center">
-                      <button onClick={() => alert(`Editar permiso: ${perm.permission_id}`)} className="text-blue-600 hover:underline text-xs mr-2">Editar</button>
+                permissions.map((permission) => (
+                  <tr key={permission.permissionId} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="p-3 font-medium text-gray-800">{permission.name || 'Sin nombre'}</td>
+                    <td className="p-3 font-mono text-xs">{permission.slug}</td>
+                    <td className="p-3">{permission.description || '-'}</td>
+                    <td className="p-3 text-center space-x-2">
+                      <button 
+                        onClick={() => {
+                          setEditingPermission(permission.permissionId);
+                          setPermissionName(permission.name || '');
+                          setPermissionSlug(permission.slug);
+                          setPermissionDescription(permission.description || '');
+                        }} 
+                        className="text-blue-600 hover:underline text-xs font-medium"
+                      >
+                        Editar
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(permission.permissionId, permission.slug)} 
+                        className="text-red-600 hover:underline text-xs font-medium"
+                      >
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))

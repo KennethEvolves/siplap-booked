@@ -1,47 +1,54 @@
 // src/components/UsersTab.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { apiFetch } from '@/lib/api';
-import { createUserSchema } from '@/validations/schemas'; // <--- 1. Importas tu esquema de Zod aquí
+import { apiFetch, ApiError } from '@/lib/api';
+import { createUserSchema, updateUserSchema, type ZodType } from '@shared/contracts';
 
-interface User {
-  user_id: string;
-  username: string;
+interface UserItem {
+  userId: string;
+  username: string | null;
   email: string;
+  status: string | null;
 }
 
-interface Role {
-  role_id: string;
-  name: string;
+interface RoleItem {
+  roleId: string;
+  name: string | null;
 }
 
 export default function UsersTab() {
-  const [showForm, setShowForm] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  // Estados para crear usuario
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-  });
+  // Estados del formulario y edición
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userPassword, setUserPassword] = useState('');
 
   // Estados para la tarjeta de "Asignar rol a usuario"
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [assignLoading, setAssignLoading] = useState(false);
-  const [assignMessage, setAssignMessage] = useState('');
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Cargar usuarios y roles para los selectores
+  // Función auxiliar para validar con Zod del paquete compartido
+  function validatedBody(schema: ZodType, value: unknown) {
+    const result = schema.safeParse(value);
+    if (!result.success) {
+      throw new Error(result.error.issues.map((issue) => issue.message).join('. '));
+    }
+    return JSON.stringify(result.data);
+  }
+
+  // Cargar usuarios y roles
   const fetchData = async () => {
     try {
       setLoadingUsers(true);
@@ -69,50 +76,57 @@ export default function UsersTab() {
     fetchData();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const cancelEdit = () => {
+    setEditingUser(null);
+    setUsername('');
+    setUserEmail('');
+    setUserPassword('');
   };
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleCreateOrUpdateUser = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    // --- 2. AQUÍ VALIDAS CON ZOD ANTES DE MANDAR AL BACKEND ---
-   const validationResult = createUserSchema.safeParse(formData);
-
-    if (!validationResult.success) {
-      // Usamos format() o un acceso directo seguro para TypeScript
-      const firstError = validationResult.error.issues[0]?.message || 'Datos inválidos';
-      setError(firstError);
-      return; 
-    }
-    // -----------------------------------------------------------
-
-    setLoading(true);
+    setBusy(true);
 
     try {
-      await apiFetch('/users', {
-        method: 'POST',
-        body: JSON.stringify(formData),
+      const bodyData = validatedBody(
+        editingUser ? updateUserSchema : createUserSchema,
+        {
+          username,
+          email: userEmail,
+          ...(!editingUser || userPassword ? { password: userPassword } : {}),
+        }
+      );
+
+      await apiFetch(editingUser ? `/users/${editingUser}` : '/users', {
+        method: editingUser ? 'PATCH' : 'POST',
+        body: bodyData,
       });
 
-      setSuccess('¡Usuario creado con éxito!');
-      setFormData({ username: '', email: '', password: '' });
-      setShowForm(false);
+      setSuccess(editingUser ? '¡Usuario actualizado con éxito!' : '¡Usuario creado con éxito!');
+      cancelEdit();
       fetchData();
     } catch (err: any) {
-      setError(err.message || 'Error al registrar el usuario');
+      setError(err.message || 'Error al guardar el usuario');
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  // Función para asignar rol a usuario (conectando con la lógica del backend)
-  const handleAssignRole = async (e: React.FormEvent) => {
+  const handleDelete = async (id: string, email: string) => {
+    if (confirm(`¿Estás seguro de eliminar a ${email}?`)) {
+      try {
+        await apiFetch(`/users/${id}`, { method: 'DELETE' });
+        if (editingUser === id) cancelEdit();
+        fetchData();
+      } catch (err: any) {
+        alert(err.message || 'No se pudo eliminar');
+      }
+    }
+  };
+
+  const handleAssignRole = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !selectedRole) {
       alert('Por favor selecciona un usuario y un rol.');
@@ -121,92 +135,78 @@ export default function UsersTab() {
 
     try {
       setAssignLoading(true);
-      setAssignMessage('');
-
       await apiFetch(`/users/${selectedUser}/roles/${selectedRole}`, {
         method: 'POST',
       });
-
-      setAssignMessage('¡Rol asignado al usuario correctamente!');
+      setSuccess('¡Rol asignado al usuario correctamente!');
       setSelectedUser('');
       setSelectedRole('');
     } catch (err: any) {
-      setAssignMessage(err.message || 'Error al asignar el rol');
+      setError(err.message || 'Error al asignar el rol');
     } finally {
       setAssignLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de eliminar este usuario?')) {
-      try {
-        await apiFetch(`/users/${id}`, { method: 'DELETE' });
-        fetchData();
-      } catch (err: any) {
-        alert(err.message || 'No se pudo eliminar');
-      }
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* 1. Tarjeta de Gestión y Creación de Usuarios */}
-      <Card title="Gestión de Usuarios">
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-600">Administra el alta y los accesos de los usuarios del sistema.</p>
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancelar' : '+ Nuevo Usuario'}
-          </Button>
-        </div>
+      {/* 1. Tarjeta de Gestión y Creación/Edición de Usuarios */}
+      <Card title={editingUser ? 'Editar Usuario' : 'Gestión de Usuarios'}>
+        <form onSubmit={handleCreateOrUpdateUser} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
+          <h3 className="font-bold text-gray-700">{editingUser ? 'Modificar Usuario' : 'Registrar Nuevo Usuario'}</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de usuario</label>
+            <input 
+              type="text" 
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
 
-        {showForm && (
-          <form onSubmit={handleCreateUser} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
-            <h3 className="font-bold text-gray-700">Registrar Nuevo Usuario</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de usuario</label>
-              <input 
-                type="text" 
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                required
-                className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+            <input 
+              type="email" 
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
+              required
+              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-              <input 
-                type="email" 
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+            <input 
+              type="password" 
+              value={userPassword}
+              onChange={(e) => setUserPassword(e.target.value)}
+              required={!editingUser}
+              placeholder={editingUser ? 'Dejar vacía para conservar la contraseña' : ''}
+              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input 
-                type="password" 
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {success && <p className="text-green-600 text-sm">{success}</p>}
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
-            {success && <p className="text-green-600 text-sm">{success}</p>}
-
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? 'Guardando...' : 'Guardar Usuario'}
+          <div className="flex space-x-2">
+            <Button variant="primary" type="submit" disabled={busy}>
+              {busy ? 'Guardando...' : editingUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
             </Button>
-          </form>
-        )}
+            {editingUser && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
 
         {/* Tabla de Usuarios */}
         <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -215,22 +215,39 @@ export default function UsersTab() {
               <tr className="bg-gray-100 text-gray-700 text-sm border-b border-gray-200">
                 <th className="p-3">Usuario</th>
                 <th className="p-3">Correo</th>
+                <th className="p-3">Estado</th>
                 <th className="p-3 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-600">
               {loadingUsers ? (
-                <tr><td colSpan={3} className="p-4 text-center text-gray-400">Cargando usuarios...</td></tr>
+                <tr><td colSpan={4} className="p-4 text-center text-gray-400">Cargando usuarios...</td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={3} className="p-4 text-center text-gray-400">No hay usuarios registrados.</td></tr>
+                <tr><td colSpan={4} className="p-4 text-center text-gray-400">No hay usuarios registrados.</td></tr>
               ) : (
                 users.map((user) => (
-                  <tr key={user.user_id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={user.userId} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3 font-medium text-gray-800">{user.username || 'Sin nombre'}</td>
                     <td className="p-3">{user.email}</td>
+                    <td className="p-3">{user.status || 'Activo'}</td>
                     <td className="p-3 text-center space-x-2">
-                      <button onClick={() => alert(`Editar usuario: ${user.user_id}`)} className="text-blue-600 hover:underline text-xs font-medium">Editar</button>
-                      <button onClick={() => handleDelete(user.user_id)} className="text-red-600 hover:underline text-xs font-medium">Eliminar</button>
+                      <button 
+                        onClick={() => {
+                          setEditingUser(user.userId);
+                          setUsername(user.username || '');
+                          setUserEmail(user.email);
+                          setUserPassword('');
+                        }} 
+                        className="text-blue-600 hover:underline text-xs font-medium"
+                      >
+                        Editar
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(user.userId, user.email)} 
+                        className="text-red-600 hover:underline text-xs font-medium"
+                      >
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -253,7 +270,7 @@ export default function UsersTab() {
             >
               <option value="">Selecciona un usuario</option>
               {users.map((u) => (
-                <option key={u.user_id} value={u.user_id}>
+                <option key={u.userId} value={u.userId}>
                   {u.username || u.email}
                 </option>
               ))}
@@ -270,18 +287,12 @@ export default function UsersTab() {
             >
               <option value="">Selecciona un rol</option>
               {roles.map((r) => (
-                <option key={r.role_id} value={r.role_id}>
+                <option key={r.roleId} value={r.roleId}>
                   {r.name}
                 </option>
               ))}
             </select>
           </div>
-
-          {assignMessage && (
-            <p className={`text-sm ${assignMessage.includes('éxito') ? 'text-green-600' : 'text-red-600'}`}>
-              {assignMessage}
-            </p>
-          )}
 
           <Button variant="primary" type="submit" disabled={assignLoading}>
             {assignLoading ? 'Asignando...' : 'Asignar rol'}

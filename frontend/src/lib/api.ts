@@ -13,33 +13,29 @@ export class ApiError extends Error {
   }
 }
 
-export function getToken():
-  | string
-  | null {
-  if (
-    typeof window === 'undefined'
-  ) {
+export function getToken(): string | null {
+  if (typeof window === 'undefined') {
     return null;
   }
-
-  return localStorage.getItem(
-    'accessToken',
-  );
+  return localStorage.getItem('accessToken');
 }
 
-export function saveToken(
-  token: string,
-) {
-  localStorage.setItem(
-    'accessToken',
-    token,
-  );
+export function saveToken(token: string) {
+  if (typeof window !== 'undefined') {
+    // 1. Guardamos en localStorage como lo tenías
+    localStorage.setItem('accessToken', token);
+    
+    // 2. ¡NUEVO! Guardamos también en una cookie para que el Middleware la pueda leer
+    document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+  }
 }
 
 export function removeToken() {
-  localStorage.removeItem(
-    'accessToken',
-  );
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('accessToken');
+    // Borramos la cookie también al cerrar sesión
+    document.cookie = 'accessToken=; path=/; max-age=0';
+  }
 }
 
 export async function apiFetch<T>(

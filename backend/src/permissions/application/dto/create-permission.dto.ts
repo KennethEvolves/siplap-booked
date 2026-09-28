@@ -1,8 +1,4 @@
-export interface CreatePermissionDto {
-  name?: string;
-  slug: string;
-  description?: string;
-}
+export type { CreatePermission as CreatePermissionDto } from '@shared/contracts';
 
 export interface CreatePermissionResultDto {
   permissionId: string;

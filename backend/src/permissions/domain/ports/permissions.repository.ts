@@ -7,15 +7,15 @@ export interface CreatePermissionData {
 }
 
 export abstract class PermissionsRepository {
-  abstract existsBySlug(
-    slug: string,
-  ): Promise<boolean>;
-
-  abstract create(
-    data: CreatePermissionData,
+  abstract findById(id: string): Promise<Permission | null>;
+  abstract update(
+    id: string,
+    data: Partial<CreatePermissionData>,
   ): Promise<Permission>;
+  abstract delete(id: string): Promise<void>;
+  abstract existsBySlug(slug: string, excludeId?: string): Promise<boolean>;
 
-  abstract findAll(): Promise<
-    Permission[]
-  >;
+  abstract create(data: CreatePermissionData): Promise<Permission>;
+
+  abstract findAll(): Promise<Permission[]>;
 }

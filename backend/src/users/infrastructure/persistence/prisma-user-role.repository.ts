@@ -1,3 +1,4 @@
+import { prismaWrite } from '../../../common/infrastructure/prisma-error.js';
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../prisma/prisma.service.js';
@@ -8,16 +9,10 @@ import {
 } from '../../domain/ports/user-role.repository.js';
 
 @Injectable()
-export class PrismaUserRoleRepository
-  implements UserRoleRepository
-{
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+export class PrismaUserRoleRepository implements UserRoleRepository {
+  constructor(private readonly prisma: PrismaService) {}
 
-  async userExists(
-    userId: string,
-  ): Promise<boolean> {
+  async userExists(userId: string): Promise<boolean> {
     const user = await this.prisma.users.findFirst({
       where: {
         user_id: userId,
@@ -31,9 +26,7 @@ export class PrismaUserRoleRepository
     return user !== null;
   }
 
-  async roleExists(
-    roleId: string,
-  ): Promise<boolean> {
+  async roleExists(roleId: string): Promise<boolean> {
     const role = await this.prisma.roles.findFirst({
       where: {
         role_id: roleId,
@@ -47,21 +40,17 @@ export class PrismaUserRoleRepository
     return role !== null;
   }
 
-  async assignmentExists(
-    userId: string,
-    roleId: string,
-  ): Promise<boolean> {
-    const assignment =
-      await this.prisma.user_roles.findFirst({
-        where: {
-          user_id: userId,
-          role_id: roleId,
-        },
+  async assignmentExists(userId: string, roleId: string): Promise<boolean> {
+    const assignment = await this.prisma.user_roles.findFirst({
+      where: {
+        user_id: userId,
+        role_id: roleId,
+      },
 
-        select: {
-          user_id: true,
-        },
-      });
+      select: {
+        user_id: true,
+      },
+    });
 
     return assignment !== null;
   }
@@ -70,8 +59,8 @@ export class PrismaUserRoleRepository
     userId: string,
     roleId: string,
   ): Promise<UserRoleAssignment> {
-    const assignment =
-      await this.prisma.user_roles.create({
+    const assignment = await prismaWrite(() =>
+      this.prisma.user_roles.create({
         data: {
           user_id: userId,
           role_id: roleId,
@@ -82,7 +71,8 @@ export class PrismaUserRoleRepository
           role_id: true,
           created_at: true,
         },
-      });
+      }),
+    );
 
     return {
       userId: assignment.user_id,

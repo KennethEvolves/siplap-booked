@@ -1,3 +1,15 @@
+import { Patch, Delete, UseFilters, Req } from '@nestjs/common';
+import {
+  createUserSchema,
+  updateUserSchema,
+  uuidSchema,
+  type UpdateUser,
+} from '@shared/contracts';
+import { ZodValidationPipe } from '../../common/presentation/zod-validation.pipe.js';
+import { RbacExceptionFilter } from '../../common/presentation/rbac-exception.filter.js';
+import { UpdateUserUseCase } from '../application/use-cases/update-user.use-case.js';
+import { DeleteUserUseCase } from '../application/use-cases/delete-user.use-case.js';
+import type { AuthenticatedUser } from '../../auth/presentation/jwt-auth.guard.js';
 import {
   BadRequestException,
   Body,
@@ -36,31 +48,26 @@ import { JwtAuthGuard } from '../../auth/presentation/jwt-auth.guard.js';
 
 import { SuperUserGuard } from '../../auth/presentation/super-user.guard.js';
 
+@UseFilters(RbacExceptionFilter)
 @Controller('users')
 export class UsersController {
   constructor(
-    private readonly createUserUseCase:
-      CreateUserUseCase,
+    private readonly updateUseCase: UpdateUserUseCase,
+    private readonly deleteUseCase: DeleteUserUseCase,
+    private readonly createUserUseCase: CreateUserUseCase,
 
-    private readonly getUsersUseCase:
-      GetUsersUseCase,
+    private readonly getUsersUseCase: GetUsersUseCase,
 
-    private readonly assignRoleToUserUseCase:
-      AssignRoleToUserUseCase,
+    private readonly assignRoleToUserUseCase: AssignRoleToUserUseCase,
   ) {}
 
   @Get()
-  @UseGuards(
-    JwtAuthGuard,
-    SuperUserGuard,
-  )
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
   async getAll() {
-    const users =
-      await this.getUsersUseCase.execute();
+    const users = await this.getUsersUseCase.execute();
 
     return {
-      message:
-        'Usuarios obtenidos correctamente',
+      message: 'Usuarios obtenidos correctamente',
 
       total: users.length,
 
@@ -70,42 +77,25 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(
-    JwtAuthGuard,
-    SuperUserGuard,
-  )
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
   async create(
-    @Body() body: CreateUserDto,
+    @Body(new ZodValidationPipe(createUserSchema)) body: CreateUserDto,
   ) {
     try {
-      const user =
-        await this.createUserUseCase.execute(
-          body,
-        );
+      const user = await this.createUserUseCase.execute(body);
 
       return {
-        message:
-          'Usuario creado correctamente',
+        message: 'Usuario creado correctamente',
 
         user,
       };
     } catch (error) {
-      if (
-        error instanceof
-        UserAlreadyExistsError
-      ) {
-        throw new ConflictException(
-          error.message,
-        );
+      if (error instanceof UserAlreadyExistsError) {
+        throw new ConflictException(error.message);
       }
 
-      if (
-        error instanceof
-        InvalidUserDataError
-      ) {
-        throw new BadRequestException(
-          error.message,
-        );
+      if (error instanceof InvalidUserDataError) {
+        throw new BadRequestException(error.message);
       }
 
       throw error;
@@ -114,68 +104,62 @@ export class UsersController {
 
   @Post(':userId/roles/:roleId')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(
-    JwtAuthGuard,
-    SuperUserGuard,
-  )
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
   async assignRole(
-    @Param('userId')
+    @Param('userId', new ZodValidationPipe(uuidSchema))
     userId: string,
 
-    @Param('roleId')
+    @Param('roleId', new ZodValidationPipe(uuidSchema))
     roleId: string,
   ) {
     try {
-      const assignment =
-        await this.assignRoleToUserUseCase.execute({
-          userId,
-          roleId,
-        });
+      const assignment = await this.assignRoleToUserUseCase.execute({
+        userId,
+        roleId,
+      });
 
       return {
-        message:
-          'Rol asignado al usuario correctamente',
+        message: 'Rol asignado al usuario correctamente',
 
         assignment,
       };
     } catch (error) {
-      if (
-        error instanceof
-        UserNotFoundError
-      ) {
-        throw new NotFoundException(
-          error.message,
-        );
+      if (error instanceof UserNotFoundError) {
+        throw new NotFoundException(error.message);
       }
 
-      if (
-        error instanceof
-        RoleNotFoundError
-      ) {
-        throw new NotFoundException(
-          error.message,
-        );
+      if (error instanceof RoleNotFoundError) {
+        throw new NotFoundException(error.message);
       }
 
-      if (
-        error instanceof
-        UserAlreadyHasRoleError
-      ) {
-        throw new ConflictException(
-          error.message,
-        );
+      if (error instanceof UserAlreadyHasRoleError) {
+        throw new ConflictException(error.message);
       }
 
-      if (
-        error instanceof
-        InvalidUserRoleDataError
-      ) {
-        throw new BadRequestException(
-          error.message,
-        );
+      if (error instanceof InvalidUserRoleDataError) {
+        throw new BadRequestException(error.message);
       }
 
       throw error;
     }
+  }
+
+  @Patch(':userId')
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async update(
+    @Param('userId', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body(new ZodValidationPipe(updateUserSchema)) body: UpdateUser,
+  ) {
+    const user = await this.updateUseCase.execute(id, body);
+    return { message: 'usuario actualizado correctamente', user };
+  }
+  @Delete(':userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async delete(
+    @Param('userId', new ZodValidationPipe(uuidSchema)) id: string,
+    @Req() request: { user: AuthenticatedUser },
+  ) {
+    await this.deleteUseCase.execute(id, request.user.sub);
   }
 }

@@ -15,8 +15,11 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should report a healthy backend', () => {
+      expect(appController.health()).toEqual({
+        status: 'ok',
+        message: 'SIPLAP backend funcionando correctamente',
+      });
     });
   });
 });

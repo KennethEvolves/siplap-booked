@@ -6,13 +6,12 @@ export interface CreateRoleData {
 }
 
 export abstract class RolesRepository {
-  abstract existsByName(
-    name: string,
-  ): Promise<boolean>;
+  abstract findById(id: string): Promise<Role | null>;
+  abstract update(id: string, data: Partial<CreateRoleData>): Promise<Role>;
+  abstract delete(id: string): Promise<void>;
+  abstract existsByName(name: string, excludeId?: string): Promise<boolean>;
 
-  abstract create(
-    data: CreateRoleData,
-  ): Promise<Role>;
+  abstract create(data: CreateRoleData): Promise<Role>;
 
   abstract findAll(): Promise<Role[]>;
 }

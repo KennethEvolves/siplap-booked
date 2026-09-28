@@ -1,7 +1,4 @@
-export interface CreateRoleDto {
-  name: string;
-  description?: string;
-}
+export type { CreateRole as CreateRoleDto } from '@shared/contracts';
 
 export interface CreateRoleResultDto {
   roleId: string;

@@ -1,3 +1,5 @@
+import { UpdateRoleUseCase } from '../application/use-cases/update-role.use-case.js';
+import { DeleteRoleUseCase } from '../application/use-cases/delete-role.use-case.js';
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module.js';
@@ -21,80 +23,62 @@ import { AssignPermissionToRoleUseCase } from '../application/use-cases/assign-p
 import { RolesController } from '../presentation/roles.controller.js';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AuthModule,
-  ],
+  imports: [PrismaModule, AuthModule],
 
-  controllers: [
-    RolesController,
-  ],
+  controllers: [RolesController],
 
   providers: [
     {
+      provide: UpdateRoleUseCase,
+      useFactory: (repository: RolesRepository) =>
+        new UpdateRoleUseCase(repository),
+      inject: [RolesRepository],
+    },
+    {
+      provide: DeleteRoleUseCase,
+      useFactory: (repository: RolesRepository) =>
+        new DeleteRoleUseCase(repository),
+      inject: [RolesRepository],
+    },
+    {
       provide: RolesRepository,
-      useClass:
-        PrismaRolesRepository,
+      useClass: PrismaRolesRepository,
     },
 
     {
-      provide:
-        RolePermissionRepository,
+      provide: RolePermissionRepository,
 
-      useClass:
-        PrismaRolePermissionRepository,
+      useClass: PrismaRolePermissionRepository,
     },
 
     {
       provide: CreateRoleUseCase,
 
-      useFactory: (
-        rolesRepository:
-          RolesRepository,
-      ) => {
-        return new CreateRoleUseCase(
-          rolesRepository,
-        );
+      useFactory: (rolesRepository: RolesRepository) => {
+        return new CreateRoleUseCase(rolesRepository);
       },
 
-      inject: [
-        RolesRepository,
-      ],
+      inject: [RolesRepository],
     },
 
     {
       provide: GetRolesUseCase,
 
-      useFactory: (
-        rolesRepository:
-          RolesRepository,
-      ) => {
-        return new GetRolesUseCase(
-          rolesRepository,
-        );
+      useFactory: (rolesRepository: RolesRepository) => {
+        return new GetRolesUseCase(rolesRepository);
       },
 
-      inject: [
-        RolesRepository,
-      ],
+      inject: [RolesRepository],
     },
 
     {
-      provide:
-        AssignPermissionToRoleUseCase,
+      provide: AssignPermissionToRoleUseCase,
 
-      useFactory: (
-        rolePermissionRepository:
-          RolePermissionRepository,
-      ) => {
-        return new AssignPermissionToRoleUseCase(
-          rolePermissionRepository,
-        );
+      useFactory: (rolePermissionRepository: RolePermissionRepository) => {
+        return new AssignPermissionToRoleUseCase(rolePermissionRepository);
       },
 
-      inject: [
-        RolePermissionRepository,
-      ],
+      inject: [RolePermissionRepository],
     },
   ],
 })

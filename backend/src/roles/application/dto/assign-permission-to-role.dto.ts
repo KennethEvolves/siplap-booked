@@ -1,7 +1,4 @@
-export interface AssignPermissionToRoleDto {
-  roleId: string;
-  permissionId: string;
-}
+export type { AssignPermission as AssignPermissionToRoleDto } from '@shared/contracts';
 
 export interface AssignPermissionToRoleResultDto {
   roleId: string;

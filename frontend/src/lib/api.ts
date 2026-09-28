@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-// Funciones de compatibilidad para evitar romper páginas existentes
+// Funciones de compatibilidad y soporte para middleware de la compañera
 export function getToken(): string | null {
   if (typeof window === 'undefined') {
     return null;
@@ -23,19 +23,22 @@ export function getToken(): string | null {
 export function saveToken(token: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('accessToken', token);
+    // Mantiene compatibilidad con el middleware de rutas privadas
+    document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
   }
 }
 
 export function removeToken() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('accessToken');
+    document.cookie = 'accessToken=; path=/; max-age=0';
   }
 }
 
 /**
  * Obtiene el token JWT:
- * 1. Si está en el servidor, lo obtiene de la sesión de Auth.js.
- * 2. Si está en el cliente, consulta la sesión de Auth.js o usa el fallback local.
+ * 1. Servidor: sesión de Auth.js
+ * 2. Cliente: sesión de Auth.js o fallback local
  */
 export async function getAccessToken(): Promise<string | null> {
   if (typeof window === 'undefined') {
@@ -52,7 +55,7 @@ export async function getAccessToken(): Promise<string | null> {
       }
     }
   } catch {
-    // Si falla la consulta de sesión, recurre al almacenamiento local
+    // Fallback a localStorage si la sesión falla
   }
 
   return getToken();
@@ -84,7 +87,7 @@ export async function apiFetch<T>(
   });
 
   const text = await response.text();
-  let data: any = {};
+  let data: unknown = null;
 
   if (text) {
     try {
@@ -96,7 +99,11 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     throw new ApiError(
-      data?.message ?? `Error HTTP ${response.status}`,
+      typeof data === 'object' && data !== null && 'message' in data
+        ? Array.isArray((data as any).message)
+          ? (data as any).message.join('. ')
+          : String((data as any).message)
+        : `Error HTTP ${response.status}`,
       response.status,
     );
   }

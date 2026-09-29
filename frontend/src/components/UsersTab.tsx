@@ -294,7 +294,7 @@ export default function UsersTab() {
             </select>
           </div>
 
-          <Button variant="primary" type="submit" disabled={assignLoading}>
+          <Button type="submit" disabled={assignLoading}>
             {assignLoading ? 'Asignando...' : 'Asignar rol'}
           </Button>
         </form>

@@ -124,7 +124,7 @@ export default function PermissionsTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Slug (ej. users.create)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Slug (recurso:accion, ej. users:create)</label>
             <input 
               type="text" 
               value={permissionSlug}

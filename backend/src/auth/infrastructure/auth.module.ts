@@ -5,7 +5,7 @@ import {
 } from '@nestjs/jwt';
 
 import { PrismaModule } from '../../prisma/prisma.module.js';
-import { LoginSuperUserUseCase } from '../application/use-cases/login-super-user.use-case.js';
+import { LoginUseCase } from '../application/use-cases/login.use-case.js';
 import { UserRepository } from '../domain/ports/user.repository.js';
 import { PasswordHasherPort } from '../domain/ports/password-hasher.port.js';
 import { TokenServicePort } from '../domain/ports/token-service.port.js';
@@ -57,13 +57,13 @@ import { RolesGuard } from '../presentation/roles.guard.js';
       useClass: JwtTokenService,
     },
     {
-      provide: LoginSuperUserUseCase,
+      provide: LoginUseCase,
       useFactory: (
         userRepository: UserRepository,
         passwordHasher: PasswordHasherPort,
         tokenService: TokenServicePort,
       ) => {
-        return new LoginSuperUserUseCase(
+        return new LoginUseCase(
           userRepository,
           passwordHasher,
           tokenService,
@@ -80,7 +80,7 @@ import { RolesGuard } from '../presentation/roles.guard.js';
     RolesGuard,
   ],
   exports: [
-    LoginSuperUserUseCase,
+    LoginUseCase,
     JwtAuthGuard,
     SuperUserGuard,
     RolesGuard,

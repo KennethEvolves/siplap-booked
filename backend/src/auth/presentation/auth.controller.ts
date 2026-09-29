@@ -14,11 +14,10 @@ import {
 
 import type { Request } from 'express';
 
-import { LoginSuperUserUseCase } from '../application/use-cases/login-super-user.use-case.js';
+import { LoginUseCase } from '../application/use-cases/login.use-case.js';
 import {
   InactiveUserError,
   InvalidCredentialsError,
-  SuperUserAccessDeniedError,
 } from '../application/errors/auth.errors.js';
 
 import {
@@ -37,7 +36,7 @@ interface LoginRequest {
 @Controller('auth')
 export class AuthController {
   constructor(
-    private readonly loginSuperUserUseCase: LoginSuperUserUseCase,
+    private readonly loginUseCase: LoginUseCase,
   ) {}
 
   // =========================
@@ -46,14 +45,14 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginRequest) {
-    if (!body.email || !body.password) {
+    if (typeof body?.email !== 'string' || typeof body?.password !== 'string' || !body.email.trim() || !body.password) {
       throw new BadRequestException(
         'El correo y la contraseña son obligatorios',
       );
     }
 
     try {
-      return await this.loginSuperUserUseCase.execute({
+      return await this.loginUseCase.execute({
         email: body.email,
         password: body.password,
       });
@@ -67,12 +66,6 @@ export class AuthController {
       if (error instanceof InactiveUserError) {
         throw new ForbiddenException(
           'El usuario se encuentra inactivo',
-        );
-      }
-
-      if (error instanceof SuperUserAccessDeniedError) {
-        throw new ForbiddenException(
-          'El usuario no tiene permisos de superusuario',
         );
       }
 

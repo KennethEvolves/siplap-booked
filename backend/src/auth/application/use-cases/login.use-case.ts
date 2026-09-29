@@ -6,14 +6,13 @@ import type {
 import {
   InvalidCredentialsError,
   InactiveUserError,
-  SuperUserAccessDeniedError,
 } from '../errors/auth.errors.js';
 
 import { UserRepository } from '../../domain/ports/user.repository.js';
 import { PasswordHasherPort } from '../../domain/ports/password-hasher.port.js';
 import { TokenServicePort } from '../../domain/ports/token-service.port.js';
 
-export class LoginSuperUserUseCase {
+export class LoginUseCase {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly passwordHasher: PasswordHasherPort,
@@ -45,21 +44,14 @@ export class LoginSuperUserUseCase {
       throw new InactiveUserError();
     }
 
-    // 4. Comprobar que tenga el rol SUPERUSUARIO
-    const isSuperUser = user.roles.includes('SUPERUSUARIO');
-
-    if (!isSuperUser) {
-      throw new SuperUserAccessDeniedError();
-    }
-
-    // 5. Generar token JWT
+    // 4. Generar token JWT para cualquier cuenta activa
     const accessToken = await this.tokenService.sign({
       sub: user.userId,
       email: user.email,
       roles: user.roles,
     });
 
-    // 6. Devolver resultado seguro
+    // 5. Devolver resultado seguro
     return {
       accessToken,
 

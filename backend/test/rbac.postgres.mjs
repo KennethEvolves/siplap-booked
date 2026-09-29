@@ -42,7 +42,7 @@ try {
   const { permission } = await call(
     'POST',
     '/permissions',
-    { slug: prefix },
+    { slug: prefix + ':read' },
     201,
   );
   cleanup.push('/permissions/' + permission.permissionId);

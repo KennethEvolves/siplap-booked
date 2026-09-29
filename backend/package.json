@@ -7,6 +7,8 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
+    "db:seed": "prisma db seed",
+    "db:seed:run": "tsc -p prisma/tsconfig.seed.json && node dist/seed/prisma/seed.js",
     "dev": "nest start --watch",
     "build": "nest build",
     "deploy": "nest deploy",

@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { AppModule } from '../dist/app.module.js';
+import { UserRepository } from '../dist/auth/domain/ports/user.repository.js';
 import { PrismaService } from '../dist/prisma/prisma.service.js';
 import { Prisma } from '../dist/generated/prisma/client.js';
 import { createUserSchema, updateRoleSchema } from '@shared/contracts';
@@ -141,6 +142,20 @@ const api = (method, path, token = admin) =>
 before(async () => {
   process.env.JWT_SECRET = 'rbac-test-only-secret';
   const module = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(UserRepository)
+    .useValue({
+      async findByEmail(email) {
+        const user = rows.users.find(user => user.email === email);
+        if (!user) return null;
+        return {
+          userId: user.user_id, username: user.username, email: user.email,
+          passwordHash: user.password_hash,
+          status: rows.user_statuses.find(status => status.status_id === user.status_id)?.name,
+          roles: rows.user_roles.filter(link => link.user_id === user.user_id)
+            .map(link => rows.roles.find(role => role.role_id === link.role_id)?.name).filter(Boolean),
+        };
+      },
+    })
     .overrideProvider(PrismaService)
     .useValue(db)
     .compile();
@@ -181,6 +196,10 @@ void test('Zod rejects malformed, empty, oversized and unknown fields before per
     .send({ email: 'bad', password: 'short' })
     .expect(400);
   await api('post', '/permissions').send({ slug: 10 }).expect(400);
+  for (const slug of ['users.create', 'users', 'users:create:extra', ':read', 'users:']) {
+    await api('post', '/permissions').send({ slug }).expect(400);
+    await api('patch', '/permissions/' + randomUUID()).send({ slug }).expect(400);
+  }
   await api('patch', '/roles/' + randomUUID())
     .send({})
     .expect(400);
@@ -202,12 +221,12 @@ void test('roles and permissions: create, list, patch, duplicate, assign and del
   assert.equal(role.name, 'EDITOR');
   const permission = (
     await api('post', '/permissions')
-      .send({ slug: ' Users.Edit ', name: 'edit' })
+      .send({ slug: ' Users:Update ', name: 'edit' })
       .expect(201)
   ).body.permission;
-  assert.equal(permission.slug, 'users.edit');
+  assert.equal(permission.slug, 'users:update');
   await api('post', '/roles').send({ name: 'EDITOR' }).expect(409);
-  await api('post', '/permissions').send({ slug: 'users.edit' }).expect(409);
+  await api('post', '/permissions').send({ slug: 'users:update' }).expect(409);
   const updated = (
     await api('patch', '/roles/' + role.roleId)
       .send({ description: 'updated' })
@@ -216,7 +235,7 @@ void test('roles and permissions: create, list, patch, duplicate, assign and del
   assert.equal(updated.name, 'EDITOR');
   assert.equal(updated.description, 'updated');
   await api('patch', '/permissions/' + permission.permissionId)
-    .send({ slug: 'users.update' })
+    .send({ slug: 'users:read' })
     .expect(200);
   const other = (
     await api('post', '/roles').send({ name: 'OTHER' }).expect(201)
@@ -302,4 +321,18 @@ void test('reserved superuser role and own account cannot be deleted', async () 
 void test('Prisma concurrency constraint errors become HTTP 409', async () => {
   failNextWrite = 'P2002';
   await api('post', '/roles').send({ name: 'CONCURRENT' }).expect(409);
+});
+
+void test('una cuenta creada sin roles inicia sesión sin obtener permisos administrativos', async () => {
+  const email = 'login-regression@example.test';
+  const password = 'LoginRegression2026!';
+  await api('post', '/users').send({ username: 'Usuario login', email, password }).expect(201);
+  const response = await request(app.getHttpServer()).post('/auth/login').send({ email, password }).expect(200);
+  assert.ok(response.body.accessToken);
+  assert.deepEqual(response.body.user.roles, []);
+  await api('get', '/auth/me', response.body.accessToken).expect(200);
+  for (const resource of ['users', 'roles', 'permissions']) {
+    await api('get', '/' + resource, response.body.accessToken).expect(403);
+  }
+  await request(app.getHttpServer()).post('/auth/login').send({ email, password: 'incorrecta' }).expect(401);
 });

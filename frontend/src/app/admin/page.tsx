@@ -1,24 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+import { removeToken } from '@/lib/api';
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
 
 export default function AdminPage() {
-  const router = useRouter();
   // Estado para saber qué pestaña está activa ('users', 'roles', o 'permissions')
   const [activeTab, setActiveTab] = useState('users');
 
   // Función para cerrar sesión correctamente
-  const handleLogout = () => {
-    // 1. Borramos la cookie de acceso cambiando su tiempo de vida a 0
-    document.cookie = 'accessToken=; path=/; max-age=0';
-    // 2. Borramos el localStorage por si acaso
-    localStorage.removeItem('accessToken');
-    // 3. Redirigimos al login con recarga completa
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    removeToken();
+    await signOut({ redirectTo: '/login' });
   };
 
   return (

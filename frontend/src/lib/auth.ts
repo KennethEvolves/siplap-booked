@@ -1,5 +1,8 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+
+class InactiveAccountError extends CredentialsSignin { code = 'inactive_account'; }
+class AuthenticationUnavailableError extends CredentialsSignin { code = 'service_unavailable'; }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET || 'clave_secreta_super_segura_para_cookies_frontend_siplap_2026',
@@ -17,7 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
-          
+
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -27,12 +30,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }),
           });
 
+          if (response.status === 403) throw new InactiveAccountError();
+          if (response.status >= 500) throw new AuthenticationUnavailableError();
           if (!response.ok) {
             return null;
           }
 
           const data = await response.json();
 
+          if (typeof data.accessToken !== 'string' || !data.accessToken || !data.user) return null;
           return {
             id: data.user?.userId || data.user?.id,
             name: data.user?.username || data.user?.name,
@@ -41,8 +47,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             accessToken: data.accessToken,
           };
         } catch (error) {
-          console.error('Error al autenticar contra NestJS:', error);
-          return null;
+          if (error instanceof CredentialsSignin) throw error;
+          throw new AuthenticationUnavailableError();
         }
       },
     }),
@@ -50,17 +56,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.accessToken = (user as any).accessToken;
-        token.roles = (user as any).roles;
-        token.userId = (user as any).id;
+        token.accessToken = user.accessToken;
+        token.roles = user.roles;
+        token.userId = user.id;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).accessToken = token.accessToken;
-        (session.user as any).roles = token.roles;
-        (session.user as any).id = token.userId;
+        session.user.accessToken = typeof token.accessToken === 'string' ? token.accessToken : undefined;
+        session.user.roles = Array.isArray(token.roles) ? token.roles.filter((role): role is string => typeof role === 'string') : [];
+        session.user.id = typeof token.userId === 'string' ? token.userId : token.sub ?? '';
       }
       return session;
     },

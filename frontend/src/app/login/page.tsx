@@ -2,21 +2,12 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, saveToken } from '../../lib/api';
-
-interface LoginResponse {
-  accessToken: string;
-  user: {
-    userId: string;
-    username: string | null;
-    email: string;
-    roles: string[];
-  };
-}
+import { signIn } from 'next-auth/react';
+import { removeToken } from '../../lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@siplap.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,23 +18,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await apiFetch<LoginResponse>(
-        '/auth/login',
-        {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        },
-        false,
-      );
-
-      if (response && response.accessToken) {
-        saveToken(response.accessToken);
-        window.location.href = '/admin';
-      } else {
-        throw new Error("El servidor no devolvió un token de acceso válido.");
+      const response = await signIn('credentials', { email, password, redirect: false });
+      if (!response?.ok || response.error) {
+        const message = response?.code === 'inactive_account'
+          ? 'Tu cuenta está inactiva. Contacta al administrador.'
+          : response?.code === 'service_unavailable'
+            ? 'No se pudo conectar con el servidor. Intenta nuevamente.'
+            : 'Correo o contraseña incorrectos.';
+        throw new Error(message);
       }
-
-    } catch (err: any) {
+      removeToken();
+      router.replace('/dashboard');
+      router.refresh();
+    } catch (err: unknown) {
       setError(
         err instanceof Error
           ? err.message
@@ -77,7 +64,7 @@ export default function LoginPage() {
       >
         <h1 style={{ marginBottom: 5 }}>SIPLAP</h1>
         <p style={{ color: '#666', marginBottom: 25 }}>
-          Panel de administración
+          Inicia sesión en tu cuenta
         </p>
 
         <label>Correo electrónico</label>

@@ -18,9 +18,13 @@ export const createRoleSchema = z.strictObject({
   name: z.string().trim().toUpperCase().min(1).max(100),
   description: description.optional(),
 });
+export const permissionSlugSchema = z.string().trim().toLowerCase().max(255).regex(
+  /^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$/,
+  'El permiso debe usar el formato recurso:accion, por ejemplo users:create',
+);
 export const createPermissionSchema = z.strictObject({
   name: z.string().trim().toUpperCase().max(150).optional(),
-  slug: z.string().trim().toLowerCase().min(1).max(255),
+  slug: permissionSlugSchema,
   description: description.optional(),
 });
 const nonEmpty = (value: object) =>

@@ -1,4 +1,6 @@
-import { auth } from './auth';
+'use client';
+
+import { getSession, signOut } from 'next-auth/react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
@@ -12,53 +14,27 @@ export class ApiError extends Error {
   }
 }
 
-// Funciones de compatibilidad y soporte para middleware de la compañera
-export function getToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return localStorage.getItem('accessToken');
-}
-
-export function saveToken(token: string) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('accessToken', token);
-    // Mantiene compatibilidad con el middleware de rutas privadas
-    document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
-  }
-}
-
+// Elimina credenciales del flujo anterior al iniciar o cerrar sesión.
 export function removeToken() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('accessToken');
     document.cookie = 'accessToken=; path=/; max-age=0';
   }
 }
-
-/**
- * Obtiene el token JWT:
- * 1. Servidor: sesión de Auth.js
- * 2. Cliente: sesión de Auth.js o fallback local
- */
+let pendingSession: ReturnType<typeof getSession> | undefined;
 export async function getAccessToken(): Promise<string | null> {
-  if (typeof window === 'undefined') {
-    const session = await auth();
-    return (session?.user as any)?.accessToken ?? null;
-  }
-
+  pendingSession ??= getSession();
   try {
-    const res = await fetch('/api/auth/session');
-    if (res.ok) {
-      const session = await res.json();
-      if (session?.user?.accessToken) {
-        return session.user.accessToken;
-      }
-    }
-  } catch {
-    // Fallback a localStorage si la sesión falla
+    return (await pendingSession)?.user?.accessToken ?? null;
+  } finally {
+    pendingSession = undefined;
   }
-
-  return getToken();
+}
+let endingSession: Promise<unknown> | undefined;
+async function expireSession() {
+  removeToken();
+  endingSession ??= signOut({ redirectTo: '/login' });
+  await endingSession;
 }
 
 export async function apiFetch<T>(
@@ -75,9 +51,11 @@ export async function apiFetch<T>(
   if (requiresAuth) {
     const token = await getAccessToken();
 
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
+    if (!token) {
+      await expireSession();
+      throw new ApiError('Tu sesión terminó. Inicia sesión nuevamente.', 401);
     }
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -86,6 +64,10 @@ export async function apiFetch<T>(
     cache: 'no-store',
   });
 
+  if (requiresAuth && response.status === 401) {
+    await expireSession();
+    throw new ApiError('Tu sesión terminó. Inicia sesión nuevamente.', 401);
+  }
   const text = await response.text();
   let data: unknown = null;
 
@@ -100,9 +82,9 @@ export async function apiFetch<T>(
   if (!response.ok) {
     throw new ApiError(
       typeof data === 'object' && data !== null && 'message' in data
-        ? Array.isArray((data as any).message)
-          ? (data as any).message.join('. ')
-          : String((data as any).message)
+        ? Array.isArray(data.message)
+          ? data.message.join('. ')
+          : String(data.message)
         : `Error HTTP ${response.status}`,
       response.status,
     );

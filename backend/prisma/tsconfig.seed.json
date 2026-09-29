@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "../dist/seed",
+    "incremental": false,
+    "declaration": false,
+    "types": ["node"]
+  },
+  "include": ["seed.ts", "rbac.seed.ts"]
+}

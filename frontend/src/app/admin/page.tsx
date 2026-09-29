@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button'; // <--- Importamos el botón de Shadcn
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
@@ -29,13 +30,13 @@ export default function AdminPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Panel SUPERUSUARIO</h1>
           
-          {/* Botón de cerrar sesión conectado */}
-          <button 
+          {/* Botón de cerrar sesión usando Shadcn UI */}
+          <Button 
             onClick={handleLogout}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer"
+            variant="destructive" // Usamos la variante de peligro para que se vea rojo
           >
             Cerrar sesión
-          </button>
+          </Button>
         </div>
 
         {/* Barra de Pestañas (Botones de navegación) */}

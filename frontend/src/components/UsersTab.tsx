@@ -3,7 +3,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { apiFetch, ApiError } from '@/lib/api';
 import { createUserSchema, updateUserSchema, type ZodType } from '@shared/contracts';
 
@@ -193,7 +193,7 @@ export default function UsersTab() {
           {success && <p className="text-green-600 text-sm">{success}</p>}
 
           <div className="flex space-x-2">
-            <Button variant="primary" type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy}>
               {busy ? 'Guardando...' : editingUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
             </Button>
             {editingUser && (

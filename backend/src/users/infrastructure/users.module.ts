@@ -1,3 +1,4 @@
+import { RemoveRoleFromUserUseCase } from '../application/use-cases/remove-role-from-user.use-case.js';
 import { UpdateUserUseCase } from '../application/use-cases/update-user.use-case.js';
 import { DeleteUserUseCase } from '../application/use-cases/delete-user.use-case.js';
 import { Module } from '@nestjs/common';
@@ -32,6 +33,11 @@ import { UsersController } from '../presentation/users.controller.js';
   controllers: [UsersController],
 
   providers: [
+    {
+      provide: RemoveRoleFromUserUseCase,
+      useFactory: (repository: UserRoleRepository) => new RemoveRoleFromUserUseCase(repository),
+      inject: [UserRoleRepository],
+    },
     {
       provide: UpdateUserUseCase,
       useFactory: (repository: UsersRepository, encoder: PasswordEncoderPort) =>

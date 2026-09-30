@@ -12,6 +12,31 @@ import {
 export class PrismaUserRoleRepository implements UserRoleRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async roleName(roleId: string): Promise<string | null> {
+    const role = await this.prisma.roles.findUnique({ where: { role_id: roleId }, select: { name: true } });
+    return role?.name ?? null;
+  }
+
+  async removeRole(userId: string, roleId: string): Promise<void> {
+    await prismaWrite(() => this.prisma.$transaction(async (tx) => {
+      await tx.users.update({ where: { user_id: userId }, data: { updated_at: new Date() } });
+      await tx.user_roles.deleteMany({ where: { user_id: userId, role_id: roleId } });
+    }));
+  }
+
+  async replaceRole(userId: string, roleId: string): Promise<UserRoleAssignment> {
+    return prismaWrite(() => this.prisma.$transaction(async (tx) => {
+      // Bloquea la fila del usuario para serializar reemplazos concurrentes.
+      await tx.users.update({ where: { user_id: userId }, data: { updated_at: new Date() } });
+      await tx.user_roles.deleteMany({ where: { user_id: userId } });
+      const assignment = await tx.user_roles.create({
+        data: { user_id: userId, role_id: roleId },
+        select: { user_id: true, role_id: true, created_at: true },
+      });
+      return { userId: assignment.user_id, roleId: assignment.role_id, createdAt: assignment.created_at };
+    }));
+  }
+
   async userExists(userId: string): Promise<boolean> {
     const user = await this.prisma.users.findFirst({
       where: {

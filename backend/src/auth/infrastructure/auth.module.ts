@@ -80,6 +80,7 @@ import { RolesGuard } from '../presentation/roles.guard.js';
     RolesGuard,
   ],
   exports: [
+    UserRepository,
     LoginUseCase,
     JwtAuthGuard,
     SuperUserGuard,

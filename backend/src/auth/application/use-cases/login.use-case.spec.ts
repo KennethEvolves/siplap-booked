@@ -8,7 +8,7 @@ const account: AuthUser = {
   passwordHash: 'hash', status: 'ACTIVE', roles: [],
 };
 function setup(user: AuthUser | null = account, valid = true) {
-  const repository = { findByEmail: vi.fn().mockResolvedValue(user) };
+  const repository = { findById: vi.fn(), findByEmail: vi.fn().mockResolvedValue(user) };
   const hasher = { compare: vi.fn().mockResolvedValue(valid) };
   const tokens = { sign: vi.fn().mockReturnValue('jwt') };
   return { useCase: new LoginUseCase(repository, hasher, tokens), repository, tokens };

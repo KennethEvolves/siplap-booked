@@ -1,3 +1,4 @@
+import SessionSync from '@/components/SessionSync';
 import { redirect } from 'next/navigation';
 import { auth, signOut } from '@/lib/auth';
 
@@ -7,6 +8,7 @@ export default async function DashboardPage() {
   if (session.user.roles?.includes('SUPERUSUARIO')) redirect('/admin');
   return (
     <main className="min-h-screen bg-gray-50 p-8">
+      <SessionSync />
       <section className="mx-auto max-w-2xl rounded-xl bg-white p-8 shadow">
         <h1 className="text-2xl font-bold">Bienvenido a SIPLAP</h1>
         <p className="mt-4">{session.user.name || session.user.email}</p>

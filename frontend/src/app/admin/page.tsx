@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button'; // <--- Importamos el botón de Shadcn
+import { Button } from '@/components/ui/Button'; // <--- Importamos el botón de Shadcn
 import { signOut } from 'next-auth/react';
 import { removeToken } from '@/lib/api';
+import SessionSync from '@/components/SessionSync';
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
@@ -21,6 +22,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      <SessionSync />
       <div className="max-w-6xl mx-auto">
         
         {/* Encabezado */}

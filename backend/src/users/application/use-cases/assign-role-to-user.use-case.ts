@@ -19,6 +19,8 @@ export class AssignRoleToUserUseCase {
 
   async execute(
     input: AssignRoleToUserDto,
+    replace = false,
+    actorId?: string,
   ): Promise<AssignRoleToUserResultDto> {
     const userId = input.userId?.trim();
     const roleId = input.roleId?.trim();
@@ -47,6 +49,13 @@ export class AssignRoleToUserUseCase {
 
     if (!roleExists) {
       throw new RoleNotFoundError();
+    }
+
+    if (replace) {
+      if (userId === actorId) {
+        throw new InvalidUserRoleDataError('No puedes reemplazar tus propios roles. Solicita el cambio a otro superusuario.');
+      }
+      return this.userRoleRepository.replaceRole(userId, roleId);
     }
 
     const alreadyAssigned =

@@ -2,15 +2,22 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
+import RolePermissions from './RolePermissions';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { createRoleSchema, updateRoleSchema, type ZodType } from '@shared/contracts';
 
-interface RoleItem {
+export interface RoleItem {
+  permissions: { permissionId: string; name: string | null; slug: string }[];
   roleId: string;
   name: string | null;
   description: string | null;
+}
+
+async function loadRoles(): Promise<RoleItem[]> {
+  const result = await apiFetch<{ roles: RoleItem[] } | RoleItem[]>('/roles');
+  return Array.isArray(result) ? result : result.roles;
 }
 
 export default function RolesTab() {
@@ -37,22 +44,20 @@ export default function RolesTab() {
 
   const fetchRoles = async () => {
     try {
-      setLoadingRoles(true);
-      const res: any = await apiFetch('/roles', { method: 'GET' });
-      if (res && Array.isArray(res.roles)) {
-        setRoles(res.roles);
-      } else if (Array.isArray(res)) {
-        setRoles(res);
-      }
-    } catch (err: any) {
-      console.error('Error al cargar roles:', err);
+      setRoles(await loadRoles());
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar los roles');
     } finally {
       setLoadingRoles(false);
     }
   };
 
   useEffect(() => {
-    fetchRoles();
+    let active = true;
+    loadRoles().then(data => { if (active) setRoles(data); })
+      .catch((error: unknown) => { if (active) setError(error instanceof Error ? error.message : 'No se pudieron cargar los roles'); })
+      .finally(() => { if (active) setLoadingRoles(false); });
+    return () => { active = false; };
   }, []);
 
   const cancelEdit = () => {
@@ -84,8 +89,8 @@ export default function RolesTab() {
       setSuccess(editingRole ? '¡Rol actualizado con éxito!' : '¡Rol creado con éxito!');
       cancelEdit();
       fetchRoles();
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar el rol');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar el rol');
     } finally {
       setBusy(false);
     }
@@ -97,8 +102,8 @@ export default function RolesTab() {
         await apiFetch(`/roles/${id}`, { method: 'DELETE' });
         if (editingRole === id) cancelEdit();
         fetchRoles();
-      } catch (err: any) {
-        alert(err.message || 'No se pudo eliminar el rol');
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : 'No se pudo eliminar el rol');
       }
     }
   };
@@ -192,6 +197,7 @@ export default function RolesTab() {
           </table>
         </div>
       </Card>
+      <RolePermissions roles={roles} loadingRoles={loadingRoles} onAssigned={fetchRoles} />
     </div>
   );
 }

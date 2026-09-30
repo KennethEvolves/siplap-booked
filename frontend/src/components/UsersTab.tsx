@@ -3,8 +3,8 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/button';
-import { apiFetch, ApiError } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { apiFetch } from '@/lib/api';
 import { createUserSchema, updateUserSchema, type ZodType } from '@shared/contracts';
 
 interface UserItem {
@@ -12,11 +12,20 @@ interface UserItem {
   username: string | null;
   email: string;
   status: string | null;
+  roles: RoleItem[];
 }
 
 interface RoleItem {
   roleId: string;
   name: string | null;
+}
+
+async function loadUserData() {
+  const [users, roles] = await Promise.all([
+    apiFetch<{ users: UserItem[] } | UserItem[]>('/users'),
+    apiFetch<{ roles: RoleItem[] } | RoleItem[]>('/roles'),
+  ]);
+  return { users: Array.isArray(users) ? users : users.users, roles: Array.isArray(roles) ? roles : roles.roles };
 }
 
 export default function UsersTab() {
@@ -35,6 +44,8 @@ export default function UsersTab() {
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [assignLoading, setAssignLoading] = useState(false);
+  const [removingRole, setRemovingRole] = useState<string | null>(null);
+  const selectedAccount = users.find(user => user.userId === editingUser);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -51,29 +62,24 @@ export default function UsersTab() {
   // Cargar usuarios y roles
   const fetchData = async () => {
     try {
-      setLoadingUsers(true);
-      const userRes: any = await apiFetch('/users', { method: 'GET' });
-      if (userRes && Array.isArray(userRes.users)) {
-        setUsers(userRes.users);
-      } else if (Array.isArray(userRes)) {
-        setUsers(userRes);
-      }
-
-      const roleRes: any = await apiFetch('/roles', { method: 'GET' });
-      if (roleRes && Array.isArray(roleRes.roles)) {
-        setRoles(roleRes.roles);
-      } else if (Array.isArray(roleRes)) {
-        setRoles(roleRes);
-      }
-    } catch (err: any) {
-      console.error('Error al cargar datos:', err);
+      const data = await loadUserData();
+      setUsers(data.users);
+      setRoles(data.roles);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar los usuarios');
     } finally {
       setLoadingUsers(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    let active = true;
+    loadUserData().then(data => {
+      if (active) { setUsers(data.users); setRoles(data.roles); }
+    }).catch((error: unknown) => {
+      if (active) setError(error instanceof Error ? error.message : 'No se pudieron cargar los usuarios');
+    }).finally(() => { if (active) setLoadingUsers(false); });
+    return () => { active = false; };
   }, []);
 
   const cancelEdit = () => {
@@ -107,8 +113,8 @@ export default function UsersTab() {
       setSuccess(editingUser ? '¡Usuario actualizado con éxito!' : '¡Usuario creado con éxito!');
       cancelEdit();
       fetchData();
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar el usuario');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar el usuario');
     } finally {
       setBusy(false);
     }
@@ -120,8 +126,8 @@ export default function UsersTab() {
         await apiFetch(`/users/${id}`, { method: 'DELETE' });
         if (editingUser === id) cancelEdit();
         fetchData();
-      } catch (err: any) {
-        alert(err.message || 'No se pudo eliminar');
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : 'No se pudo eliminar');
       }
     }
   };
@@ -133,19 +139,36 @@ export default function UsersTab() {
       return;
     }
 
+    setError('');
+    setSuccess('');
     try {
       setAssignLoading(true);
       await apiFetch(`/users/${selectedUser}/roles/${selectedRole}`, {
-        method: 'POST',
+        method: 'PUT',
       });
-      setSuccess('¡Rol asignado al usuario correctamente!');
+      setSuccess('¡Rol actualizado correctamente! Los roles anteriores fueron reemplazados.');
+      await fetchData();
       setSelectedUser('');
       setSelectedRole('');
-    } catch (err: any) {
-      setError(err.message || 'Error al asignar el rol');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al asignar el rol');
     } finally {
       setAssignLoading(false);
     }
+  };
+
+  const handleRemoveRole = async (role: RoleItem) => {
+    if (!selectedAccount) return;
+    setError('');
+    setSuccess('');
+    setRemovingRole(role.roleId);
+    try {
+      await apiFetch(`/users/${selectedAccount.userId}/roles/${role.roleId}`, { method: 'DELETE' });
+      setSuccess(`Rol ${role.name || 'seleccionado'} quitado correctamente.`);
+      await fetchData();
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'No se pudo quitar el rol');
+    } finally { setRemovingRole(null); }
   };
 
   return (
@@ -189,17 +212,38 @@ export default function UsersTab() {
             />
           </div>
 
+          {selectedAccount && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <h3 className="mb-2 text-sm font-semibold text-gray-800">Roles asignados</h3>
+              {selectedAccount.roles?.length ? (
+                <ul className="space-y-2">
+                  {selectedAccount.roles.map(role => (
+                    <li key={role.roleId} className="flex items-center justify-between gap-4">
+                      <span className="text-sm text-gray-700">{role.name || 'Sin nombre'}</span>
+                      <button type="button" onClick={() => handleRemoveRole(role)}
+                        disabled={busy || assignLoading || removingRole !== null}
+                        aria-label={`Quitar rol ${role.name || 'sin nombre'}`}
+                        className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50">
+                        {removingRole === role.roleId ? 'Quitando...' : 'Quitar'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-gray-500">Sin roles asignados.</p>}
+            </div>
+          )}
           {error && <p className="text-red-600 text-sm">{error}</p>}
           {success && <p className="text-green-600 text-sm">{success}</p>}
 
           <div className="flex space-x-2">
-            <Button type="submit" disabled={busy}>
+            <Button variant="default" type="submit" disabled={busy || removingRole !== null}>
               {busy ? 'Guardando...' : editingUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
             </Button>
             {editingUser && (
               <button
                 type="button"
                 onClick={cancelEdit}
+                disabled={removingRole !== null}
                 className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-400"
               >
                 Cancelar
@@ -216,23 +260,28 @@ export default function UsersTab() {
                 <th className="p-3">Usuario</th>
                 <th className="p-3">Correo</th>
                 <th className="p-3">Estado</th>
+                <th className="p-3">Roles</th>
                 <th className="p-3 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-600">
               {loadingUsers ? (
-                <tr><td colSpan={4} className="p-4 text-center text-gray-400">Cargando usuarios...</td></tr>
+                <tr><td colSpan={5} className="p-4 text-center text-gray-400">Cargando usuarios...</td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={4} className="p-4 text-center text-gray-400">No hay usuarios registrados.</td></tr>
+                <tr><td colSpan={5} className="p-4 text-center text-gray-400">No hay usuarios registrados.</td></tr>
               ) : (
                 users.map((user) => (
                   <tr key={user.userId} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3 font-medium text-gray-800">{user.username || 'Sin nombre'}</td>
                     <td className="p-3">{user.email}</td>
                     <td className="p-3">{user.status || 'Activo'}</td>
+                    <td className="p-3">{user.roles?.length ? user.roles.map(role => role.name || 'Sin nombre').join(', ') : 'Sin rol asignado'}</td>
                     <td className="p-3 text-center space-x-2">
                       <button 
+                        disabled={removingRole !== null}
                         onClick={() => {
+                          setError('');
+                          setSuccess('');
                           setEditingUser(user.userId);
                           setUsername(user.username || '');
                           setUserEmail(user.email);
@@ -243,6 +292,7 @@ export default function UsersTab() {
                         Editar
                       </button>
                       <button 
+                        disabled={removingRole !== null}
                         onClick={() => handleDelete(user.userId, user.email)} 
                         className="text-red-600 hover:underline text-xs font-medium"
                       >
@@ -258,13 +308,15 @@ export default function UsersTab() {
       </Card>
 
       {/* 2. Tarjeta de Asignar Rol a Usuario */}
-      <Card title="Asignar rol a usuario">
+      <Card title="Cambiar rol de usuario">
         <form onSubmit={handleAssignRole} className="space-y-4">
+          <p className="text-sm text-gray-600">El rol seleccionado reemplazará todos los roles actuales del usuario.</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
             <select
               value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
+              onChange={(e) => { setSelectedUser(e.target.value); setSelectedRole(''); setError(''); setSuccess(''); }}
+              disabled={assignLoading || removingRole !== null}
               required
               className="w-full border border-gray-300 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
             >
@@ -277,6 +329,8 @@ export default function UsersTab() {
             </select>
           </div>
 
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          {success && <p role="status" className="text-sm text-green-700">{success}</p>}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
             <select
@@ -294,8 +348,8 @@ export default function UsersTab() {
             </select>
           </div>
 
-          <Button type="submit" disabled={assignLoading}>
-            {assignLoading ? 'Asignando...' : 'Asignar rol'}
+          <Button variant="default" type="submit" disabled={assignLoading || removingRole !== null}>
+            {assignLoading ? 'Guardando...' : 'Guardar rol'}
           </Button>
         </form>
       </Card>

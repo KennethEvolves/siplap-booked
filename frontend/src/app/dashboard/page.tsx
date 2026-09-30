@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <section className="mx-auto max-w-2xl rounded-xl bg-white p-8 shadow">
-        <h1 className="text-2xl font-bold">Bienvenido a SIPLAP</h1>
+        <h1 className="text-2xl font-bold">Bienvenido a  SIPLAP</h1>
         <p className="mt-4">{session.user.name || session.user.email}</p>
         <p className="mt-2">Tu sesión está iniciada correctamente.</p>
         <p className="mt-2">Roles: {session.user.roles?.join(', ') || 'Sin rol asignado'}</p>

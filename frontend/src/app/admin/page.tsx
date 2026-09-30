@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button'; // <--- Importamos el botón de Shadcn
+import { Button } from '@/components/ui/Button'; // <--- Importamos el botón de Shadcn
 import { signOut } from 'next-auth/react';
 import { removeToken } from '@/lib/api';
 import UsersTab from '@/components/UsersTab';

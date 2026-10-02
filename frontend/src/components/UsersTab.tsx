@@ -3,7 +3,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { createUserSchema, updateUserSchema, type ZodType } from '@shared/contracts';
 

@@ -2,10 +2,10 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { createUserSchema, updateUserSchema, type ZodType } from '@shared/contracts';
+import { UserPlus, ShieldCheck, Search } from 'lucide-react';
 
 interface UserItem {
   userId: string;
@@ -33,6 +33,7 @@ export default function UsersTab() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Estados del formulario y edición
   const [editingUser, setEditingUser] = useState<string | null>(null);
@@ -50,7 +51,6 @@ export default function UsersTab() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Función auxiliar para validar con Zod del paquete compartido
   function validatedBody(schema: ZodType, value: unknown) {
     const result = schema.safeParse(value);
     if (!result.success) {
@@ -59,7 +59,6 @@ export default function UsersTab() {
     return JSON.stringify(result.data);
   }
 
-  // Cargar usuarios y roles
   const fetchData = async () => {
     try {
       const data = await loadUserData();
@@ -171,112 +170,170 @@ export default function UsersTab() {
     } finally { setRemovingRole(null); }
   };
 
+  const filteredUsers = users.filter(user => 
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
+      
       {/* 1. Tarjeta de Gestión y Creación/Edición de Usuarios */}
-      <Card title={editingUser ? 'Editar Usuario' : 'Gestión de Usuarios'}>
-        <form onSubmit={handleCreateOrUpdateUser} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
-          <h3 className="font-bold text-gray-700">{editingUser ? 'Modificar Usuario' : 'Registrar Nuevo Usuario'}</h3>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de usuario</label>
-            <input 
-              type="text" 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            />
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <UserPlus className="h-5 w-5" />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-            <input 
-              type="email" 
-              value={userEmail}
-              onChange={(e) => setUserEmail(e.target.value)}
-              required
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            />
+            <h2 className="text-base font-bold text-slate-900">
+              {editingUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {editingUser ? 'Modifica los datos del usuario seleccionado.' : 'Crea las credenciales iniciales para una nueva persona.'}
+            </p>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input 
-              type="password" 
-              value={userPassword}
-              onChange={(e) => setUserPassword(e.target.value)}
-              required={!editingUser}
-              placeholder={editingUser ? 'Dejar vacía para conservar la contraseña' : ''}
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            />
+        <form onSubmit={handleCreateOrUpdateUser} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nombre de usuario</label>
+              <input 
+                type="text" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                placeholder="Ej. Juan Pérez"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Correo electrónico</label>
+              <input 
+                type="email" 
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                required
+                placeholder="nombre@empresa.com"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Contraseña</label>
+              <input 
+                type="password" 
+                value={userPassword}
+                onChange={(e) => setUserPassword(e.target.value)}
+                required={!editingUser}
+                placeholder={editingUser ? 'Dejar vacía para conservar' : 'Mínimo 8 caracteres'}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
           </div>
 
           {selectedAccount && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <h3 className="mb-2 text-sm font-semibold text-gray-800">Roles asignados</h3>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">Roles asignados</h3>
               {selectedAccount.roles?.length ? (
                 <ul className="space-y-2">
                   {selectedAccount.roles.map(role => (
-                    <li key={role.roleId} className="flex items-center justify-between gap-4">
-                      <span className="text-sm text-gray-700">{role.name || 'Sin nombre'}</span>
-                      <button type="button" onClick={() => handleRemoveRole(role)}
+                    <li key={role.roleId} className="flex items-center justify-between gap-4 bg-white p-2.5 rounded-lg border border-slate-200/60">
+                      <span className="text-sm font-medium text-slate-700">{role.name || 'Sin nombre'}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => handleRemoveRole(role)}
                         disabled={busy || assignLoading || removingRole !== null}
-                        aria-label={`Quitar rol ${role.name || 'sin nombre'}`}
-                        className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50">
+                        className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition-colors"
+                      >
                         {removingRole === role.roleId ? 'Quitando...' : 'Quitar'}
                       </button>
                     </li>
                   ))}
                 </ul>
-              ) : <p className="text-sm text-gray-500">Sin roles asignados.</p>}
+              ) : <p className="text-xs text-slate-400">Sin roles asignados.</p>}
             </div>
           )}
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-          {success && <p className="text-green-600 text-sm">{success}</p>}
 
-          <div className="flex space-x-2">
-            <Button variant="default" type="submit" disabled={busy || removingRole !== null}>
-              {busy ? 'Guardando...' : editingUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
-            </Button>
+          {error && <p className="text-rose-600 text-xs font-medium">{error}</p>}
+          {success && <p className="text-emerald-600 text-xs font-medium">{success}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
             {editingUser && (
               <button
                 type="button"
                 onClick={cancelEdit}
                 disabled={removingRole !== null}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-400"
+                className="px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 Cancelar
               </button>
             )}
+            <Button type="submit" disabled={busy || removingRole !== null} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
+              {busy ? 'Guardando...' : editingUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
+            </Button>
           </div>
         </form>
+      </div>
 
-        {/* Tabla de Usuarios */}
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      {/* 2. Barra de búsqueda */}
+      <div className="flex flex-col sm:flex-row justify-between gap-3 items-center">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre o correo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+        </div>
+      </div>
+
+      {/* 3. Tabla de Usuarios */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-100 text-gray-700 text-sm border-b border-gray-200">
-                <th className="p-3">Usuario</th>
-                <th className="p-3">Correo</th>
-                <th className="p-3">Estado</th>
-                <th className="p-3">Roles</th>
-                <th className="p-3 text-center">Acciones</th>
+              <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                <th className="py-3.5 px-6">Usuario</th>
+                <th className="py-3.5 px-6">Correo</th>
+                <th className="py-3.5 px-6">Estado</th>
+                <th className="py-3.5 px-6">Roles</th>
+                <th className="py-3.5 px-6 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="text-sm text-gray-600">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {loadingUsers ? (
-                <tr><td colSpan={5} className="p-4 text-center text-gray-400">Cargando usuarios...</td></tr>
-              ) : users.length === 0 ? (
-                <tr><td colSpan={5} className="p-4 text-center text-gray-400">No hay usuarios registrados.</td></tr>
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">Cargando usuarios...</td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">No hay usuarios registrados.</td>
+                </tr>
               ) : (
-                users.map((user) => (
-                  <tr key={user.userId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 font-medium text-gray-800">{user.username || 'Sin nombre'}</td>
-                    <td className="p-3">{user.email}</td>
-                    <td className="p-3">{user.status || 'Activo'}</td>
-                    <td className="p-3">{user.roles?.length ? user.roles.map(role => role.name || 'Sin nombre').join(', ') : 'Sin rol asignado'}</td>
-                    <td className="p-3 text-center space-x-2">
+                filteredUsers.map((user) => (
+                  <tr key={user.userId} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-4 px-6 font-semibold text-slate-900">
+                      {user.username || 'Sin nombre'}
+                    </td>
+                    <td className="py-4 px-6 text-slate-500 text-xs">
+                      {user.email}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        {user.status || 'Activo'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200/60">
+                        {user.roles?.length ? user.roles.map(role => role.name || 'Sin nombre').join(', ') : 'Sin rol asignado'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-right space-x-3">
                       <button 
                         disabled={removingRole !== null}
                         onClick={() => {
@@ -287,14 +344,14 @@ export default function UsersTab() {
                           setUserEmail(user.email);
                           setUserPassword('');
                         }} 
-                        className="text-blue-600 hover:underline text-xs font-medium"
+                        className="text-xs font-semibold text-blue-600 hover:underline"
                       >
                         Editar
                       </button>
                       <button 
                         disabled={removingRole !== null}
                         onClick={() => handleDelete(user.userId, user.email)} 
-                        className="text-red-600 hover:underline text-xs font-medium"
+                        className="text-xs font-semibold text-rose-600 hover:underline"
                       >
                         Eliminar
                       </button>
@@ -305,54 +362,69 @@ export default function UsersTab() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
-      {/* 2. Tarjeta de Asignar Rol a Usuario */}
-      <Card title="Cambiar rol de usuario">
+      {/* 4. Tarjeta de Asignar Rol a Usuario */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Cambiar rol de usuario</h2>
+            <p className="text-xs text-slate-500">El rol seleccionado reemplazará todos los roles actuales del usuario.</p>
+          </div>
+        </div>
+
         <form onSubmit={handleAssignRole} className="space-y-4">
-          <p className="text-sm text-gray-600">El rol seleccionado reemplazará todos los roles actuales del usuario.</p>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
-            <select
-              value={selectedUser}
-              onChange={(e) => { setSelectedUser(e.target.value); setSelectedRole(''); setError(''); setSuccess(''); }}
-              disabled={assignLoading || removingRole !== null}
-              required
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
-            >
-              <option value="">Selecciona un usuario</option>
-              {users.map((u) => (
-                <option key={u.userId} value={u.userId}>
-                  {u.username || u.email}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Usuario</label>
+              <select
+                value={selectedUser}
+                onChange={(e) => { setSelectedUser(e.target.value); setSelectedRole(''); setError(''); setSuccess(''); }}
+                disabled={assignLoading || removingRole !== null}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-700"
+              >
+                <option value="">Selecciona un usuario</option>
+                {users.map((u) => (
+                  <option key={u.userId} value={u.userId}>
+                    {u.username || u.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Rol</label>
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-700"
+              >
+                <option value="">Selecciona un rol</option>
+                {roles.map((r) => (
+                  <option key={r.roleId} value={r.roleId}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-          {success && <p role="status" className="text-sm text-green-700">{success}</p>}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              required
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
-            >
-              <option value="">Selecciona un rol</option>
-              {roles.map((r) => (
-                <option key={r.roleId} value={r.roleId}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {error && <p role="alert" className="text-rose-600 text-xs font-medium">{error}</p>}
+          {success && <p role="status" className="text-emerald-600 text-xs font-medium">{success}</p>}
 
-          <Button variant="default" type="submit" disabled={assignLoading || removingRole !== null}>
-            {assignLoading ? 'Guardando...' : 'Guardar rol'}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={assignLoading || removingRole !== null} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
+              {assignLoading ? 'Guardando...' : 'Guardar rol'}
+            </Button>
+          </div>
         </form>
-      </Card>
+      </div>
+
     </div>
   );
 }

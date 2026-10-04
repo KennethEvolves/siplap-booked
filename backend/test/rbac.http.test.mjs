@@ -44,20 +44,28 @@ const matches = (row, where = {}) =>
   );
 let failNextWrite;
 const project = (row, select) =>
-  row &&
+  row && (!select ? { ...row } :
   Object.fromEntries(
     Object.entries(select).map(([key, value]) => [
       key,
       value === true
         ? row[key]
-        : project(
+        : key === 'role_permissions'
+          ? rows.role_permissions.filter(link => link.role_id === row.role_id).map(link => project(link, value.select))
+          : key === 'permissions'
+            ? project(rows.permissions.find(permission => permission.permission_id === row.permission_id), value.select)
+        : key === 'user_roles'
+          ? rows.user_roles.filter(link => link.user_id === row.user_id).map(link => project(link, value.select))
+          : key === 'roles'
+            ? project(rows.roles.find(role => role.role_id === row.role_id), value.select)
+            : project(
             rows.user_statuses.find(
               (status) => status.status_id === row.status_id,
             ),
             value.select,
           ),
     ]),
-  );
+  ));
 const db = {};
 for (const table of Object.keys(rows)) {
   db[table] = {
@@ -135,6 +143,7 @@ db.$transaction = async (operation) => {
 };
 let app, admin, ordinary;
 const actorId = randomUUID();
+const ordinaryId = randomUUID();
 const api = (method, path, token = admin) =>
   request(app.getHttpServer())
     [method](path)
@@ -144,6 +153,13 @@ before(async () => {
   const module = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(UserRepository)
     .useValue({
+      async findById(id) {
+        // Fixed actors authenticate existing authorization fixtures.
+        if (id === actorId) return { userId: id, email: 'admin@test.com', status: 'ACTIVE', roles: ['SUPERUSUARIO'] };
+        if (id === ordinaryId) return { userId: id, email: 'reader@test.com', status: 'ACTIVE', roles: ['LECTOR'] };
+        const row = rows.users.find(user => user.user_id === id);
+        return row ? this.findByEmail(row.email) : null;
+      },
       async findByEmail(email) {
         const user = rows.users.find(user => user.email === email);
         if (!user) return null;
@@ -163,7 +179,7 @@ before(async () => {
   await app.init();
   const jwt = module.get(JwtService);
   admin = jwt.sign({ sub: actorId, roles: ['SUPERUSUARIO'] });
-  ordinary = jwt.sign({ sub: randomUUID(), roles: ['LECTOR'] });
+  ordinary = jwt.sign({ sub: ordinaryId, roles: ['LECTOR'] });
 });
 after(async () => {
   await app?.close();
@@ -335,4 +351,78 @@ void test('una cuenta creada sin roles inicia sesión sin obtener permisos admin
     await api('get', '/' + resource, response.body.accessToken).expect(403);
   }
   await request(app.getHttpServer()).post('/auth/login').send({ email, password: 'incorrecta' }).expect(401);
+});
+
+void test('reemplazar roles actualiza el listado y los permisos de tokens ya emitidos', async () => {
+  const superRole = (await api('get', '/roles').expect(200)).body.roles.find(role => role.name === 'SUPERUSUARIO');
+  const deptRole = (await api('post', '/roles').send({ name: 'JEFE DE DEPARTAMENTO' }).expect(201)).body.role;
+  const create = async email => (await api('post', '/users').send({ email, username: email, password: 'RoleSwap2026!' }).expect(201)).body.user;
+  const first = await create('swap-first@example.test');
+  const second = await create('swap-second@example.test');
+  const put = (user, role) => api('put', '/users/' + user.userId + '/roles/' + role.roleId);
+  await put(first, superRole).expect(200);
+  await put(second, deptRole).expect(200);
+  const login = async email => (await request(app.getHttpServer()).post('/auth/login').send({ email, password: 'RoleSwap2026!' }).expect(200)).body.accessToken;
+  const oldAdminToken = await login(first.email);
+  const oldOrdinaryToken = await login(second.email);
+  await api('get', '/users', oldAdminToken).expect(200);
+  await api('get', '/users', oldOrdinaryToken).expect(403);
+  await put(first, deptRole).expect(200);
+  await put(second, superRole).expect(200);
+  await put(second, superRole).expect(200); // Idempotent replacement.
+  const users = (await api('get', '/users').expect(200)).body.users;
+  assert.deepEqual(users.find(user => user.userId === first.userId).roles, [{ roleId: deptRole.roleId, name: deptRole.name }]);
+  assert.deepEqual(users.find(user => user.userId === second.userId).roles, [{ roleId: superRole.roleId, name: superRole.name }]);
+  await api('get', '/users', oldAdminToken).expect(403);
+  await api('get', '/users', oldOrdinaryToken).expect(200);
+  assert.deepEqual((await api('get', '/auth/me', oldAdminToken).expect(200)).body.user.roles, [deptRole.name]);
+  await api('put', '/users/' + second.userId + '/roles/' + deptRole.roleId, oldOrdinaryToken).expect(400);
+  await put(first, { roleId: randomUUID() }).expect(404);
+  failNextWrite = 'P2003';
+  await put(first, superRole).expect(409);
+  assert.equal(rows.user_roles.filter(link => link.user_id === first.userId).length, 1);
+  assert.equal(rows.user_roles.find(link => link.user_id === first.userId).role_id, deptRole.roleId);
+  await api('delete', '/users/' + second.userId).expect(204);
+  await api('get', '/auth/me', oldOrdinaryToken).expect(401);
+});
+
+void test('quitar un rol conserva los demás y revoca el acceso en la sesión existente', async () => {
+  const roleList = (await api('get', '/roles').expect(200)).body.roles;
+  const superRole = roleList.find(role => role.name === 'SUPERUSUARIO');
+  const deptRole = roleList.find(role => role.name === 'JEFE DE DEPARTAMENTO');
+  const user = (await api('post', '/users').send({ username: 'Quitar rol', email: 'remove-role@example.test', password: 'RemoveRole2026!' }).expect(201)).body.user;
+  const path = '/users/' + user.userId + '/roles/';
+  await api('post', path + superRole.roleId).expect(201);
+  await api('post', path + deptRole.roleId).expect(201);
+  const token = (await request(app.getHttpServer()).post('/auth/login').send({ email: user.email, password: 'RemoveRole2026!' }).expect(200)).body.accessToken;
+  await api('delete', path + superRole.roleId, token).expect(400);
+  await api('delete', path + deptRole.roleId, ordinary).expect(403);
+  await request(app.getHttpServer()).delete(path + deptRole.roleId).expect(401);
+  await api('delete', path + randomUUID()).expect(404);
+  await api('delete', path + 'invalid-id').expect(400);
+  await api('delete', path + superRole.roleId).expect(204);
+  await api('delete', path + superRole.roleId).expect(204);
+  await api('get', '/users', token).expect(403);
+  const listed = (await api('get', '/users').expect(200)).body.users.find(item => item.userId === user.userId);
+  assert.deepEqual(listed.roles, [{ roleId: deptRole.roleId, name: deptRole.name }]);
+  await api('delete', path + deptRole.roleId).expect(204);
+  const profile = (await api('get', '/auth/me', token).expect(200)).body;
+  assert.deepEqual(profile.user.roles, []);
+  assert.ok(rows.roles.some(role => role.role_id === deptRole.roleId));
+});
+
+void test('asignar permisos los muestra en el rol y conserva asignaciones previas', async () => {
+  const role = (await api('post', '/roles').send({ name: 'PERMISSION_FORM_TEST' }).expect(201)).body.role;
+  const first = (await api('post', '/permissions').send({ name: 'Ver reportes', slug: 'reports:read' }).expect(201)).body.permission;
+  const second = (await api('post', '/permissions').send({ name: 'Crear reportes', slug: 'reports:create' }).expect(201)).body.permission;
+  const path = '/roles/' + role.roleId + '/permissions/';
+  await api('post', path + first.permissionId, ordinary).expect(403);
+  await request(app.getHttpServer()).post(path + first.permissionId).expect(401);
+  await api('post', path + first.permissionId).expect(201);
+  await api('post', path + second.permissionId).expect(201);
+  await api('post', path + first.permissionId).expect(409);
+  await api('post', path + randomUUID()).expect(404);
+  const listed = (await api('get', '/roles').expect(200)).body.roles.find(item => item.roleId === role.roleId);
+  assert.deepEqual(listed.permissions.map(item => item.slug).sort(), ['reports:create', 'reports:read']);
+  assert.equal(rows.role_permissions.filter(item => item.role_id === role.roleId).length, 2);
 });

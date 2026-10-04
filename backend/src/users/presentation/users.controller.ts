@@ -1,4 +1,5 @@
-import { Patch, Delete, UseFilters, Req } from '@nestjs/common';
+import { RemoveRoleFromUserUseCase } from '../application/use-cases/remove-role-from-user.use-case.js';
+import { Put, Patch, Delete, UseFilters, Req } from '@nestjs/common';
 import {
   createUserSchema,
   updateUserSchema,
@@ -52,6 +53,7 @@ import { SuperUserGuard } from '../../auth/presentation/super-user.guard.js';
 @Controller('users')
 export class UsersController {
   constructor(
+    private readonly removeRoleUseCase: RemoveRoleFromUserUseCase,
     private readonly updateUseCase: UpdateUserUseCase,
     private readonly deleteUseCase: DeleteUserUseCase,
     private readonly createUserUseCase: CreateUserUseCase,
@@ -102,6 +104,33 @@ export class UsersController {
     }
   }
 
+  @Delete(':userId/roles/:roleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async removeRole(
+    @Param('userId', new ZodValidationPipe(uuidSchema)) userId: string,
+    @Param('roleId', new ZodValidationPipe(uuidSchema)) roleId: string,
+    @Req() request: { user: AuthenticatedUser },
+  ) {
+    try {
+      await this.removeRoleUseCase.execute(userId, roleId, request.user.sub);
+    } catch (error) {
+      if (error instanceof UserNotFoundError || error instanceof RoleNotFoundError) throw new NotFoundException(error.message);
+      if (error instanceof InvalidUserRoleDataError) throw new BadRequestException(error.message);
+      throw error;
+    }
+  }
+
+  @Put(':userId/roles/:roleId')
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async replaceRole(
+    @Param('userId', new ZodValidationPipe(uuidSchema)) userId: string,
+    @Param('roleId', new ZodValidationPipe(uuidSchema)) roleId: string,
+    @Req() request: { user: AuthenticatedUser },
+  ) {
+    return this.saveRole(userId, roleId, true, request.user.sub);
+  }
+
   @Post(':userId/roles/:roleId')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, SuperUserGuard)
@@ -112,11 +141,20 @@ export class UsersController {
     @Param('roleId', new ZodValidationPipe(uuidSchema))
     roleId: string,
   ) {
+    return this.saveRole(userId, roleId);
+  }
+
+  private async saveRole(
+    userId: string,
+    roleId: string,
+    replace = false,
+    actorId?: string,
+  ) {
     try {
       const assignment = await this.assignRoleToUserUseCase.execute({
         userId,
         roleId,
-      });
+      }, replace, actorId);
 
       return {
         message: 'Rol asignado al usuario correctamente',

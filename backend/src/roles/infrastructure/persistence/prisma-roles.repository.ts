@@ -41,6 +41,7 @@ export class PrismaRolesRepository implements RolesRepository {
           role_id: true,
           name: true,
           description: true,
+          role_permissions: { select: { permissions: { select: { permission_id: true, name: true, slug: true } } } },
           created_at: true,
           updated_at: true,
         },
@@ -49,6 +50,7 @@ export class PrismaRolesRepository implements RolesRepository {
 
     return {
       roleId: role.role_id,
+      permissions: role.role_permissions.map(({ permissions }) => ({ permissionId: permissions.permission_id, name: permissions.name, slug: permissions.slug })),
       name: role.name,
       description: role.description,
       createdAt: role.created_at,
@@ -62,7 +64,8 @@ export class PrismaRolesRepository implements RolesRepository {
         role_id: true,
         name: true,
         description: true,
-        created_at: true,
+        role_permissions: { select: { permissions: { select: { permission_id: true, name: true, slug: true } } } },
+          created_at: true,
         updated_at: true,
       },
 
@@ -73,6 +76,7 @@ export class PrismaRolesRepository implements RolesRepository {
 
     return roles.map((role) => ({
       roleId: role.role_id,
+      permissions: role.role_permissions.map(({ permissions }) => ({ permissionId: permissions.permission_id, name: permissions.name, slug: permissions.slug })),
       name: role.name,
       description: role.description,
       createdAt: role.created_at,
@@ -87,13 +91,15 @@ export class PrismaRolesRepository implements RolesRepository {
         role_id: true,
         name: true,
         description: true,
-        created_at: true,
+        role_permissions: { select: { permissions: { select: { permission_id: true, name: true, slug: true } } } },
+          created_at: true,
         updated_at: true,
       },
     });
     return role
       ? {
           roleId: role.role_id,
+      permissions: role.role_permissions.map(({ permissions }) => ({ permissionId: permissions.permission_id, name: permissions.name, slug: permissions.slug })),
           name: role.name,
           description: role.description,
           createdAt: role.created_at,
@@ -114,6 +120,7 @@ export class PrismaRolesRepository implements RolesRepository {
           role_id: true,
           name: true,
           description: true,
+          role_permissions: { select: { permissions: { select: { permission_id: true, name: true, slug: true } } } },
           created_at: true,
           updated_at: true,
         },
@@ -121,6 +128,7 @@ export class PrismaRolesRepository implements RolesRepository {
     );
     return {
       roleId: role.role_id,
+      permissions: role.role_permissions.map(({ permissions }) => ({ permissionId: permissions.permission_id, name: permissions.name, slug: permissions.slug })),
       name: role.name,
       description: role.description,
       createdAt: role.created_at,

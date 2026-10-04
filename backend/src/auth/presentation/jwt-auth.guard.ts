@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
+import { UserRepository } from '../domain/ports/user.repository.js';
 import { JwtService } from '@nestjs/jwt';
 
 export interface AuthenticatedUser {
@@ -19,6 +20,7 @@ export interface AuthenticatedUser {
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
+    private readonly users: UserRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -44,7 +46,10 @@ export class JwtAuthGuard implements CanActivate {
       const payload =
         await this.jwtService.verifyAsync<AuthenticatedUser>(token);
 
-      request.user = payload;
+      if (typeof payload.sub !== 'string') throw new UnauthorizedException();
+      const user = await this.users.findById(payload.sub);
+      if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException();
+      request.user = { ...payload, email: user.email, roles: user.roles };
 
       return true;
     } catch {

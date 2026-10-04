@@ -60,6 +60,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.roles = user.roles;
         token.userId = user.id;
       }
+      if (!user && typeof token.accessToken === 'string') {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/auth/me`, {
+            headers: { Authorization: `Bearer ${token.accessToken}` }, cache: 'no-store',
+          });
+          if (!response.ok) return null;
+          const current = await response.json();
+          token.roles = current.user.roles;
+          token.email = current.user.email;
+        } catch {
+          // No autorizar con roles almacenados si no se puede validar la sesión.
+          return null;
+        }
+      }
       return token;
     },
     async session({ session, token }) {

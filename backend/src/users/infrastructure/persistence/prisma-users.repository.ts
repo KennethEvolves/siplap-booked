@@ -61,7 +61,8 @@ export class PrismaUsersRepository implements UsersRepository {
           type_id: true,
           department_id: true,
 
-          user_statuses: {
+          user_roles: { select: { roles: { select: { role_id: true, name: true } } } },
+        user_statuses: {
             select: {
               name: true,
             },
@@ -75,6 +76,7 @@ export class PrismaUsersRepository implements UsersRepository {
       username: user.username,
       email: user.email,
       status: user.user_statuses.name,
+      roles: user.user_roles.map(({ roles }) => ({ roleId: roles.role_id, name: roles.name })),
       typeId: user.type_id,
       departmentId: user.department_id,
       createdAt: user.created_at,
@@ -91,6 +93,7 @@ export class PrismaUsersRepository implements UsersRepository {
         type_id: true,
         department_id: true,
 
+        user_roles: { select: { roles: { select: { role_id: true, name: true } } } },
         user_statuses: {
           select: {
             name: true,
@@ -108,6 +111,7 @@ export class PrismaUsersRepository implements UsersRepository {
       username: user.username,
       email: user.email,
       status: user.user_statuses.name,
+      roles: user.user_roles.map(({ roles }) => ({ roleId: roles.role_id, name: roles.name })),
       typeId: user.type_id,
       departmentId: user.department_id,
       createdAt: user.created_at,
@@ -125,6 +129,7 @@ export class PrismaUsersRepository implements UsersRepository {
         type_id: true,
         department_id: true,
 
+        user_roles: { select: { roles: { select: { role_id: true, name: true } } } },
         user_statuses: {
           select: {
             name: true,
@@ -138,6 +143,7 @@ export class PrismaUsersRepository implements UsersRepository {
           username: user.username,
           email: user.email,
           status: user.user_statuses.name,
+      roles: user.user_roles.map(({ roles }) => ({ roleId: roles.role_id, name: roles.name })),
           typeId: user.type_id,
           departmentId: user.department_id,
           createdAt: user.created_at,
@@ -162,7 +168,8 @@ export class PrismaUsersRepository implements UsersRepository {
           type_id: true,
           department_id: true,
 
-          user_statuses: {
+          user_roles: { select: { roles: { select: { role_id: true, name: true } } } },
+        user_statuses: {
             select: {
               name: true,
             },
@@ -175,6 +182,7 @@ export class PrismaUsersRepository implements UsersRepository {
       username: user.username,
       email: user.email,
       status: user.user_statuses.name,
+      roles: user.user_roles.map(({ roles }) => ({ roleId: roles.role_id, name: roles.name })),
       typeId: user.type_id,
       departmentId: user.department_id,
       createdAt: user.created_at,

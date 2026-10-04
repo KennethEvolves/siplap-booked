@@ -11,11 +11,15 @@ export class PrismaUserRepository implements UserRepository {
     private readonly prisma: PrismaService,
   ) {}
 
+  async findById(id: string): Promise<AuthUser | null> {
+    return this.findUser({ user_id: id });
+  }
   async findByEmail(email: string): Promise<AuthUser | null> {
+    return this.findUser({ email });
+  }
+  private async findUser(where: { user_id?: string; email?: string }): Promise<AuthUser | null> {
     const user = await this.prisma.users.findFirst({
-      where: {
-        email,
-      },
+      where,
 
       select: {
         user_id: true,

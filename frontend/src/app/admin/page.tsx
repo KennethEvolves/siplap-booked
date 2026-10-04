@@ -1,87 +1,95 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/Button'; // <--- Importamos el botón de Shadcn
+import { Button } from '@/components/ui/Button';
 import { signOut } from 'next-auth/react';
 import { removeToken } from '@/lib/api';
 import SessionSync from '@/components/SessionSync';
+import { Sidebar } from '@/components/Sidebar'; 
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
 
 export default function AdminPage() {
-  // Estado para saber qué pestaña está activa ('users', 'roles', o 'permissions')
   const [activeTab, setActiveTab] = useState('users');
 
-  // Función para cerrar sesión correctamente
   const handleLogout = async () => {
     removeToken();
     await signOut({ redirectTo: '/login' });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800">
       <SessionSync />
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Encabezado */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Panel SUPERUSUARIO</h1>
+      
+      {/* Nuestro Sidebar colapsable a la izquierda */}
+      <Sidebar />
+
+      {/* Contenido principal a la derecha */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
           
-          {/* Botón de cerrar sesión usando Shadcn UI */}
-          <Button 
-            onClick={handleLogout}
-            variant="destructive" // Usamos la variante de peligro para que se vea rojo
-          >
-            Cerrar sesión
-          </Button>
+          {/* Encabezado */}
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Panel de control</p>
+              <h1 className="text-3xl font-extrabold text-slate-900">Panel SUPERUSUARIO</h1>
+              <p className="text-sm text-slate-500 mt-1">Gestiona las personas, roles y permisos de tu organización.</p>
+            </div>
+            
+            <Button 
+              onClick={handleLogout}
+              variant="destructive"
+            >
+              Cerrar sesión
+            </Button>
+          </div>
+
+          {/* Barra de Pestañas */}
+          <div className="flex space-x-3 border-b border-slate-200 pb-3 mb-6">
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+                activeTab === 'users'
+                  ? 'bg-blue-600 text-white shadow-blue-500/20'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+              }`}
+            >
+              Usuarios y Roles
+            </button>
+
+            <button
+              onClick={() => setActiveTab('roles')}
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+                activeTab === 'roles'
+                  ? 'bg-blue-600 text-white shadow-blue-500/20'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+              }`}
+            >
+              Gestión de Roles
+            </button>
+
+            <button
+              onClick={() => setActiveTab('permissions')}
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+                activeTab === 'permissions'
+                  ? 'bg-blue-600 text-white shadow-blue-500/20'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+              }`}
+            >
+              Permisos
+            </button>
+          </div>
+
+          {/* Contenido Dinámico */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/70">
+            {activeTab === 'users' && <UsersTab />}
+            {activeTab === 'roles' && <RolesTab />}
+            {activeTab === 'permissions' && <PermissionsTab />}
+          </div>
+
         </div>
-
-        {/* Barra de Pestañas (Botones de navegación) */}
-        <div className="flex space-x-4 border-b border-gray-200 pb-3 mb-6">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'users'
-                ? 'bg-black text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Usuarios y Roles
-          </button>
-
-          <button
-            onClick={() => setActiveTab('roles')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'roles'
-                ? 'bg-black text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Gestión de Roles
-          </button>
-
-          <button
-            onClick={() => setActiveTab('permissions')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'permissions'
-                ? 'bg-black text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Permisos
-          </button>
-        </div>
-
-        {/* Contenido Dinámico: Aquí se muestra el componente según la pestaña activa */}
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          {activeTab === 'users' && <UsersTab />}
-          {activeTab === 'roles' && <RolesTab />}
-          {activeTab === 'permissions' && <PermissionsTab />}
-        </div>
-
-      </div>
+      </main>
     </div>
   );
 }

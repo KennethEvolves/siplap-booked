@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import RolePermissions from './RolePermissions';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
@@ -197,7 +196,6 @@ export default function RolesTab() {
           </table>
         </div>
       </Card>
-      <RolePermissions roles={roles} loadingRoles={loadingRoles} onAssigned={fetchRoles} />
     </div>
   );
 }

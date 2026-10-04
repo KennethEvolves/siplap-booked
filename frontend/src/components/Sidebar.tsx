@@ -4,23 +4,34 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  Home, 
+  LayoutDashboard, 
   Users, 
-  Image as ImageIcon, 
-  MessageSquare, 
+  CalendarCheck, 
+  MapPin, 
+  Box, 
+  Clock, 
   FileText, 
-  UserPlus, 
   HelpCircle, 
   Info,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 
+const MENU_ITEMS = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Usuarios y Roles', href: '/admin', icon: Users },
+  { name: 'Actividades', href: '/activities', icon: CalendarCheck },
+  { name: 'Espacios', href: '/spaces', icon: MapPin },
+  { name: 'Recursos', href: '/resources', icon: Box },
+  { name: 'Reservaciones', href: '/reservations', icon: Clock },
+  { name: 'Reportes', href: '/reports', icon: FileText },
+];
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => pathname === path || pathname?.startsWith(`${path}/`);
 
   return (
     <aside 
@@ -29,20 +40,25 @@ export function Sidebar() {
       }`}
     >
       <div>
-        {/* Logo / Marca y Botón para contraer/expandir */}
+        {/* Logo / Encabezado del Sistema */}
         <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-2 py-4 mb-4`}>
           {!collapsed && (
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="h-9 w-9 min-w-[36px] rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                <span className="font-black text-sm tracking-tighter">M</span>
+              <div className="h-9 w-9 min-w-[36px] rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-black text-sm">
+                S
               </div>
-              <span className="text-xl font-extrabold tracking-tight text-slate-900 truncate">
-                Menu
-              </span>
+              <div className="flex flex-col">
+                <span className="text-base font-extrabold tracking-tight text-slate-900 truncate leading-none">
+                  SIPLAP
+                </span>
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">
+                  Gestión Institucional
+                </span>
+              </div>
             </div>
           )}
 
-          {/* Botón para alternar el menú */}
+          {/* Alternar tamaño */}
           <button 
             onClick={() => setCollapsed(!collapsed)}
             className="p-2 rounded-xl hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors flex items-center justify-center"
@@ -52,89 +68,32 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Menú de Navegación Principal */}
+        {/* Módulos Institucionales */}
         <nav className="space-y-1.5">
-          <Link
-            href="/admin"
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-              isActive('/admin')
-                ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Panel Admin"
-          >
-            <Home className="h-4 w-4 min-w-[16px]" />
-            {!collapsed && <span className="truncate">Panel Admin</span>}
-          </Link>
+          {MENU_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
 
-          <Link
-            href="/comunidad"
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-              isActive('/comunidad')
-                ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Comunidad"
-          >
-            <Users className="h-4 w-4 min-w-[16px]" />
-            {!collapsed && <span className="truncate">Comunidad</span>}
-          </Link>
-
-          <Link
-            href="/showcase"
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-              isActive('/showcase')
-                ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Showcase"
-          >
-            <ImageIcon className="h-4 w-4 min-w-[16px]" />
-            {!collapsed && <span className="truncate">Showcase</span>}
-          </Link>
-
-          <Link
-            href="/comentarios"
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-              isActive('/comentarios')
-                ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Comentarios"
-          >
-            <MessageSquare className="h-4 w-4 min-w-[16px]" />
-            {!collapsed && <span className="truncate">Comentarios</span>}
-          </Link>
-
-          <Link
-            href="/noticias"
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-              isActive('/noticias')
-                ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Noticias"
-          >
-            <FileText className="h-4 w-4 min-w-[16px]" />
-            {!collapsed && <span className="truncate">Noticias</span>}
-          </Link>
-
-          <Link
-            href="/suscripcion"
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-              isActive('/suscripcion')
-                ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-            }`}
-            title="Suscripción"
-          >
-            <UserPlus className="h-4 w-4 min-w-[16px]" />
-            {!collapsed && <span className="truncate">Suscripción</span>}
-          </Link>
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
+                  active
+                    ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
+                    : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
+                }`}
+                title={item.name}
+              >
+                <Icon className="h-4 w-4 min-w-[16px]" />
+                {!collapsed && <span className="truncate">{item.name}</span>}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
-      {/* Footer del Sidebar: Ayuda e Información */}
+      {/* Soporte */}
       <div className="space-y-1.5 pt-4 border-t border-slate-200/80">
         <Link
           href="/ayuda"

@@ -19,9 +19,13 @@ export default function SessionSync() {
         if (disposed) return;
         if (!session?.user?.accessToken) { router.replace('/login'); return; }
         const admin = session.user.roles?.includes('SUPERUSUARIO');
-        if (pathname.startsWith('/admin') && !admin) router.replace('/dashboard');
-        else if (pathname.startsWith('/dashboard') && admin) router.replace('/admin');
-        else if (pathname.startsWith('/dashboard')) router.refresh();
+        
+        // Bloquear acceso a /admin si NO es superusuario
+        if (pathname.startsWith('/admin') && !admin) {
+          router.replace('/dashboard');
+        } else if (pathname.startsWith('/dashboard')) {
+          router.refresh();
+        }
       } finally { pending = false; }
     };
     const check = () => { void sync().catch(() => { /* Reintenta en el siguiente foco o intervalo. */ }); };

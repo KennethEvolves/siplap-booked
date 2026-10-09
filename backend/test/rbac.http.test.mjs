@@ -15,6 +15,9 @@ import { createUserSchema, updateRoleSchema } from '@shared/contracts';
 // The database boundary is an in-memory double; no real records are modified.
 const rows = Object.fromEntries(
   [
+    'profiles',
+    'departments',
+    'user_types',
     'users',
     'roles',
     'permissions',
@@ -50,6 +53,12 @@ const project = (row, select) =>
       key,
       value === true
         ? row[key]
+        : key === 'profiles'
+          ? project(rows.profiles.find(profile => profile.user_id === row.user_id), value.select) ?? null
+          : key === 'departments'
+            ? project(rows.departments.find(department => department.department_id === row.department_id), value.select) ?? null
+          : key === 'user_types'
+            ? project(rows.user_types.find(type => type.type_id === row.type_id), value.select) ?? null
         : key === 'role_permissions'
           ? rows.role_permissions.filter(link => link.role_id === row.role_id).map(link => project(link, value.select))
           : key === 'permissions'
@@ -76,6 +85,11 @@ for (const table of Object.keys(rows)) {
           select,
         ) ?? null
       );
+    },
+    async findUniqueOrThrow(args) {
+      const row = await this.findFirst(args);
+      if (!row) throw dbError('P2025');
+      return row;
     },
     async findUnique(args) {
       return this.findFirst(args);
@@ -425,4 +439,46 @@ void test('asignar permisos los muestra en el rol y conserva asignaciones previa
   const listed = (await api('get', '/roles').expect(200)).body.roles.find(item => item.roleId === role.roleId);
   assert.deepEqual(listed.permissions.map(item => item.slug).sort(), ['reports:create', 'reports:read']);
   assert.equal(rows.role_permissions.filter(item => item.role_id === role.roleId).length, 2);
+});
+
+void test('perfil propio: lectura, creación, actualización parcial y seguridad', async () => {
+  const password = 'ProfileTest2026!';
+  const create = async email => (await api('post', '/users').send({ email, username: 'Perfil', password }).expect(201)).body.user;
+  const owner = await create('profile-owner@example.test');
+  const other = await create('profile-other@example.test');
+  const login = async email => (await request(app.getHttpServer()).post('/auth/login').send({ email, password }).expect(200)).body.accessToken;
+  const token = await login(owner.email);
+  const otherToken = await login(other.email);
+  for (const path of ['/api/users/profile', '/users/profile']) {
+    await request(app.getHttpServer()).get(path).expect(401);
+    await request(app.getHttpServer()).patch(path).send({ bio: 'test' }).expect(401);
+    const profile = (await api('get', path, token).expect(200)).body.profile;
+    assert.equal(profile.userId, owner.userId);
+    assert.equal(profile.dateOfBirth, null);
+    assert.equal(profile.department, null);
+    assert.equal(profile.userType, null);
+    assert.deepEqual(profile.roles, []);
+    assert.equal(profile.status.name, 'ACTIVE');
+    assert.equal(profile.passwordHash, undefined);
+    assert.equal(profile.password_hash, undefined);
+  }
+  for (const body of [{}, { userId: other.userId }, { roles: ['SUPERUSUARIO'] }, { status: 'ACTIVE' }, { shift: 'MANANA' }, { password: 'secret' }, { email: 'bad' }, { dateOfBirth: '2025-02-30' }, { dateOfBirth: '2999-01-01' }, { dateOfBirth: null }, { avatarUrl: 'javascript:alert(1)' }, { firstName: 'x'.repeat(101) }]) {
+    await api('patch', '/api/users/profile', token).send(body).expect(400);
+  }
+  await api('patch', '/api/users/profile', token).send({ firstName: 'Ana' }).expect(400);
+  const updated = (await api('patch', '/api/users/profile', token).send({ firstName: ' Ana ', lastName: 'Perfil', dateOfBirth: '1998-04-15', phoneNumber: '5551234567', bio: 'Mi perfil' }).expect(200)).body.profile;
+  assert.equal(updated.firstName, 'Ana');
+  assert.equal(updated.dateOfBirth, '1998-04-15');
+  assert.equal(updated.phoneNumber, '5551234567');
+  const second = (await api('patch', '/users/profile', token).send({ bio: null, email: ' UPDATED-PROFILE@example.test ' }).expect(200)).body.profile;
+  assert.equal(second.bio, null);
+  assert.equal(second.firstName, 'Ana');
+  assert.equal(second.email, 'updated-profile@example.test');
+  const untouched = (await api('get', '/api/users/profile', otherToken).expect(200)).body.profile;
+  assert.equal(untouched.firstName, null);
+  assert.equal(untouched.email, other.email);
+  await api('patch', '/api/users/profile', token).send({ email: other.email }).expect(409);
+  assert.equal((await api('get', '/api/users/profile', token).expect(200)).body.profile.email, second.email);
+  const profileRow = rows.profiles.find(row => row.user_id === owner.userId);
+  assert.equal(profileRow.last_name, 'Perfil');
 });

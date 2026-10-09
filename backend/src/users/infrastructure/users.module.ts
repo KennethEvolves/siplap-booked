@@ -1,3 +1,7 @@
+import { ProfileRepository } from '../domain/ports/profile.repository.js';
+import { PrismaProfileRepository } from './persistence/prisma-profile.repository.js';
+import { UserProfileUseCase } from '../application/use-cases/user-profile.use-case.js';
+import { ProfileController } from '../presentation/profile.controller.js';
 import { RemoveRoleFromUserUseCase } from '../application/use-cases/remove-role-from-user.use-case.js';
 import { UpdateUserUseCase } from '../application/use-cases/update-user.use-case.js';
 import { DeleteUserUseCase } from '../application/use-cases/delete-user.use-case.js';
@@ -30,12 +34,20 @@ import { UsersController } from '../presentation/users.controller.js';
 @Module({
   imports: [PrismaModule, AuthModule],
 
-  controllers: [UsersController],
+  controllers: [ProfileController, UsersController],
 
   providers: [
+    { provide: ProfileRepository, useClass: PrismaProfileRepository },
+    {
+      provide: UserProfileUseCase,
+      useFactory: (profiles: ProfileRepository, users: UsersRepository) =>
+        new UserProfileUseCase(profiles, users),
+      inject: [ProfileRepository, UsersRepository],
+    },
     {
       provide: RemoveRoleFromUserUseCase,
-      useFactory: (repository: UserRoleRepository) => new RemoveRoleFromUserUseCase(repository),
+      useFactory: (repository: UserRoleRepository) =>
+        new RemoveRoleFromUserUseCase(repository),
       inject: [UserRoleRepository],
     },
     {

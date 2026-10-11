@@ -92,3 +92,40 @@ export async function apiFetch<T>(
 
   return data as T;
 }
+export interface UserProfileResponse {
+  profile: {
+    userId: string;
+    username: string;
+    email: string;
+    status: { statusId: string; name: string } | null;
+    userType: { typeId: string; name: string } | null;
+    department: { departmentId: string; name: string } | null;
+    roles: Array<{ roleId: string; name: string }>;
+    firstName: string | null;
+    lastName: string | null;
+    phoneNumber: string | null;
+    avatarUrl: string | null;
+    dateOfBirth: string | null;
+    bio: string | null;
+    shift: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export async function getUserProfile(token: string): Promise<UserProfileResponse> {
+  const res = await fetch(`${API_URL}/api/users/profile`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.message || 'Error al obtener el perfil de usuario');
+  }
+
+  return res.json();
+}

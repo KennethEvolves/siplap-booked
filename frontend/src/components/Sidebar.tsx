@@ -14,11 +14,13 @@ import {
   HelpCircle, 
   Info,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 
 const MENU_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Mi Perfil', href: '/perfil', icon: User },
   { name: 'Usuarios y Roles', href: '/admin', icon: Users },
   { name: 'Actividades', href: '/activities', icon: CalendarCheck },
   { name: 'Espacios', href: '/spaces', icon: MapPin },

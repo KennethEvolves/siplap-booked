@@ -1,7 +1,9 @@
+// src/app/admin/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { signOut } from 'next-auth/react';
 import { removeToken } from '@/lib/api';
 import SessionSync from '@/components/SessionSync';
@@ -9,9 +11,20 @@ import { Sidebar } from '@/components/Sidebar';
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
+import ProfileForm from '@/components/ProfileForm'; // <--- 1. Importamos tu formulario de perfil
 
 export default function AdminPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab'); // Lee si la URL trae ?tab=profile
+
   const [activeTab, setActiveTab] = useState('users');
+
+  // 2. Si haces clic en el Sidebar y cambia la URL a ?tab=profile, se activa automáticamente
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const handleLogout = async () => {
     removeToken();
@@ -45,7 +58,7 @@ export default function AdminPage() {
             </Button>
           </div>
 
-          {/* Barra de Pestañas */}
+          {/* Barra de Pestañas (Botones superiores) */}
           <div className="flex space-x-3 border-b border-slate-200 pb-3 mb-6">
             <button
               onClick={() => setActiveTab('users')}
@@ -79,13 +92,25 @@ export default function AdminPage() {
             >
               Permisos
             </button>
+
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+                activeTab === 'profile'
+                  ? 'bg-blue-600 text-white shadow-blue-500/20'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+              }`}
+            >
+              Mi Perfil
+            </button>
           </div>
 
-          {/* Contenido Dinámico */}
+          {/* Contenido Dinámico: Aquí se renderiza según la pestaña activa */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/70">
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'roles' && <RolesTab />}
             {activeTab === 'permissions' && <PermissionsTab />}
+            {activeTab === 'profile' && <ProfileForm />} {/* <--- 3. Renderizamos el formulario de perfil */}
           </div>
 
         </div>

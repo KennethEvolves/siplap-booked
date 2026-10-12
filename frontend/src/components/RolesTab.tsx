@@ -2,29 +2,23 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
-import { createRoleSchema, updateRoleSchema, type ZodType } from '@shared/contracts';
+import { ShieldCheck, UserPlus, Search } from 'lucide-react';
 
-export interface RoleItem {
-  permissions: { permissionId: string; name: string | null; slug: string }[];
+interface RoleItem {
   roleId: string;
   name: string | null;
   description: string | null;
 }
 
-async function loadRoles(): Promise<RoleItem[]> {
-  const result = await apiFetch<{ roles: RoleItem[] } | RoleItem[]>('/roles');
-  return Array.isArray(result) ? result : result.roles;
-}
-
 export default function RolesTab() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
-  const [loadingRoles, setLoadingRoles] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Estados de edición y formulario
+  // Estados del formulario y edición
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [roleName, setRoleName] = useState('');
   const [roleDescription, setRoleDescription] = useState('');
@@ -32,31 +26,22 @@ export default function RolesTab() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Validación con Zod del paquete compartido
-  function validatedBody(schema: ZodType, value: unknown) {
-    const result = schema.safeParse(value);
-    if (!result.success) {
-      throw new Error(result.error.issues.map((issue) => issue.message).join('. '));
-    }
-    return JSON.stringify(result.data);
-  }
-
+  // Cargar roles desde la base de datos
   const fetchRoles = async () => {
     try {
-      setRoles(await loadRoles());
+      setLoading(true);
+      const res: any = await apiFetch('/roles');
+      const rolesList = Array.isArray(res) ? res : res.roles;
+      setRoles(rolesList || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'No se pudieron cargar los roles');
     } finally {
-      setLoadingRoles(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    let active = true;
-    loadRoles().then(data => { if (active) setRoles(data); })
-      .catch((error: unknown) => { if (active) setError(error instanceof Error ? error.message : 'No se pudieron cargar los roles'); })
-      .finally(() => { if (active) setLoadingRoles(false); });
-    return () => { active = false; };
+    fetchRoles();
   }, []);
 
   const cancelEdit = () => {
@@ -72,17 +57,14 @@ export default function RolesTab() {
     setBusy(true);
 
     try {
-      const bodyData = validatedBody(
-        editingRole ? updateRoleSchema : createRoleSchema,
-        {
-          name: roleName,
-          description: roleDescription,
-        }
-      );
+      const payload = {
+        name: roleName,
+        description: roleDescription,
+      };
 
       await apiFetch(editingRole ? `/roles/${editingRole}` : '/roles', {
         method: editingRole ? 'PATCH' : 'POST',
-        body: bodyData,
+        body: JSON.stringify(payload),
       });
 
       setSuccess(editingRole ? '¡Rol actualizado con éxito!' : '¡Rol creado con éxito!');
@@ -107,84 +89,134 @@ export default function RolesTab() {
     }
   };
 
+  const filteredRoles = roles.filter(role => 
+    role.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
-      <Card title={editingRole ? 'Editar Rol' : 'Gestión de Roles'}>
-        <form onSubmit={handleCreateOrUpdateRole} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
-          <h3 className="font-bold text-gray-700">{editingRole ? 'Modificar Rol' : 'Registrar Nuevo Rol'}</h3>
-          
+      
+      {/* 1. Panel superior: Registrar o Editar Rol */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-sm">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del rol</label>
+            <h2 className="text-base font-bold text-slate-900">
+              {editingRole ? 'Editar Rol' : 'Registrar Nuevo Rol'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {editingRole ? 'Modifica los detalles del rol seleccionado.' : 'Crea un nuevo nivel de acceso para la organización.'}
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreateOrUpdateRole} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nombre del rol</label>
             <input 
               type="text" 
               value={roleName}
               onChange={(e) => setRoleName(e.target.value)}
               required
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              placeholder="Ej. Administrador de Contenido"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Descripción</label>
             <textarea 
               value={roleDescription}
               onChange={(e) => setRoleDescription(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black min-h-[80px]"
+              placeholder="Describe brevemente las responsabilidades de este rol..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50 min-h-[90px]"
             />
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-          {success && <p className="text-green-600 text-sm">{success}</p>}
+          {error && <p className="text-rose-600 text-xs font-medium">{error}</p>}
+          {success && <p className="text-emerald-600 text-xs font-medium">{success}</p>}
 
-          <div className="flex space-x-2">
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Guardando...' : editingRole ? 'Actualizar Rol' : 'Guardar Rol'}
-            </Button>
+          <div className="flex justify-end gap-2 pt-2">
             {editingRole && (
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-400"
+                className="px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 Cancelar
               </button>
             )}
+            <Button type="submit" disabled={busy} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
+              {busy ? 'Guardando...' : editingRole ? 'Actualizar Rol' : 'Guardar Rol'}
+            </Button>
           </div>
         </form>
+      </div>
 
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      {/* 2. Barra de búsqueda */}
+      <div className="flex justify-between items-center">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre o descripción..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+          />
+        </div>
+      </div>
+
+      {/* 3. Panel de Tabla de Roles */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-100 text-gray-700 text-sm border-b border-gray-200">
-                <th className="p-3">Rol</th>
-                <th className="p-3">Descripción</th>
-                <th className="p-3 text-center">Acciones</th>
+              <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/70">
+                <th className="py-3.5 px-6">Rol</th>
+                <th className="py-3.5 px-6">Descripción</th>
+                <th className="py-3.5 px-6 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="text-sm text-gray-600">
-              {loadingRoles ? (
-                <tr><td colSpan={3} className="p-4 text-center text-gray-400">Cargando roles...</td></tr>
-              ) : roles.length === 0 ? (
-                <tr><td colSpan={3} className="p-4 text-center text-gray-400">No hay roles registrados.</td></tr>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan={3} className="py-8 text-center text-slate-400">Cargando roles...</td>
+                </tr>
+              ) : filteredRoles.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-8 text-center text-slate-400">No hay roles registrados.</td>
+                </tr>
               ) : (
-                roles.map((role) => (
-                  <tr key={role.roleId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 font-medium text-gray-800">{role.name || 'Sin nombre'}</td>
-                    <td className="p-3">{role.description || '-'}</td>
-                    <td className="p-3 text-center space-x-2">
+                filteredRoles.map((role) => (
+                  <tr key={role.roleId} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-4 px-6 font-semibold text-slate-900">
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/60">
+                        {role.name || 'Sin nombre'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-slate-500 text-xs">
+                      {role.description || 'Sin descripción detallada.'}
+                    </td>
+                    <td className="py-4 px-6 text-right space-x-3">
                       <button 
                         onClick={() => {
+                          setError('');
+                          setSuccess('');
                           setEditingRole(role.roleId);
                           setRoleName(role.name || '');
                           setRoleDescription(role.description || '');
                         }} 
-                        className="text-blue-600 hover:underline text-xs font-medium"
+                        className="text-xs font-semibold text-blue-600 hover:underline"
                       >
                         Editar
                       </button>
                       <button 
-                        onClick={() => handleDelete(role.roleId, role.name || 'Rol')} 
-                        className="text-red-600 hover:underline text-xs font-medium"
+                        onClick={() => handleDelete(role.roleId, role.name || 'rol')} 
+                        className="text-xs font-semibold text-rose-600 hover:underline"
                       >
                         Eliminar
                       </button>
@@ -195,7 +227,8 @@ export default function RolesTab() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
+
     </div>
   );
 }

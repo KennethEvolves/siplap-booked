@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
+  User, // <--- Importamos el ícono de perfil
   CalendarCheck, 
   MapPin, 
   Box, 
@@ -19,6 +20,7 @@ import {
 
 const MENU_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Mi Perfil', href: '/profile', icon: User }, // <--- Agregamos la opción fija del perfil aquí
   { name: 'Usuarios y Roles', href: '/admin', icon: Users },
   { name: 'Actividades', href: '/activities', icon: CalendarCheck },
   { name: 'Espacios', href: '/spaces', icon: MapPin },

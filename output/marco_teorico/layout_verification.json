@@ -1,0 +1,162 @@
+{
+  "content_pages": 25,
+  "total_pages": 27,
+  "references_pages": 2,
+  "body_words": 10542,
+  "font": "Times New Roman 12 pt",
+  "leading_pt": 18,
+  "size": "A4",
+  "margin_cm": 2.5,
+  "pages": [
+    {
+      "page": 1,
+      "words": 385,
+      "bottom_text_y": 115.0,
+      "free_space_pt": 44.2
+    },
+    {
+      "page": 2,
+      "words": 415,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 3,
+      "words": 422,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 4,
+      "words": 402,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 5,
+      "words": 422,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 6,
+      "words": 424,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 7,
+      "words": 429,
+      "bottom_text_y": 70.0,
+      "free_space_pt": -0.8
+    },
+    {
+      "page": 8,
+      "words": 420,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 9,
+      "words": 428,
+      "bottom_text_y": 70.0,
+      "free_space_pt": -0.8
+    },
+    {
+      "page": 10,
+      "words": 412,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 11,
+      "words": 410,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 12,
+      "words": 427,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 13,
+      "words": 417,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 14,
+      "words": 419,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 15,
+      "words": 412,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 16,
+      "words": 423,
+      "bottom_text_y": 70.0,
+      "free_space_pt": -0.8
+    },
+    {
+      "page": 17,
+      "words": 422,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 18,
+      "words": 422,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 19,
+      "words": 426,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 20,
+      "words": 421,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 21,
+      "words": 419,
+      "bottom_text_y": 106.0,
+      "free_space_pt": 35.2
+    },
+    {
+      "page": 22,
+      "words": 425,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 23,
+      "words": 414,
+      "bottom_text_y": 88.0,
+      "free_space_pt": 17.2
+    },
+    {
+      "page": 24,
+      "words": 423,
+      "bottom_text_y": 70.0,
+      "free_space_pt": -0.8
+    },
+    {
+      "page": 25,
+      "words": 431,
+      "bottom_text_y": 70.0,
+      "free_space_pt": -0.8
+    }
+  ]
+}

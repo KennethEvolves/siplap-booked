@@ -11,7 +11,6 @@ import { Sidebar } from '@/components/Sidebar';
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
-import ProfileForm from '@/components/ProfileForm'; // <--- 1. Importamos tu formulario de perfil
 
 export default function AdminPage() {
   const searchParams = useSearchParams();
@@ -110,7 +109,6 @@ export default function AdminPage() {
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'roles' && <RolesTab />}
             {activeTab === 'permissions' && <PermissionsTab />}
-            {activeTab === 'profile' && <ProfileForm />} {/* <--- 3. Renderizamos el formulario de perfil */}
           </div>
 
         </div>

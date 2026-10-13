@@ -55,3 +55,30 @@ export type UpdatePermission = z.infer<typeof updatePermissionSchema>;
 export type AssignRole = z.infer<typeof assignRoleSchema>;
 export type AssignPermission = z.infer<typeof assignPermissionSchema>;
 export type { ZodType } from 'zod';
+
+const profileBirthDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Usa YYYY-MM-DD')
+  .refine(value => {
+    const date = new Date(value + 'T00:00:00Z');
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value && value <= new Date().toISOString().slice(0, 10);
+  }, 'La fecha debe ser válida y no estar en el futuro');
+export const updateProfileSchema = z.strictObject({
+  username: createUserSchema.shape.username,
+  email: createUserSchema.shape.email.optional(),
+  firstName: z.string().trim().min(1).max(100).nullable().optional(),
+  lastName: z.string().trim().min(1).max(100).nullable().optional(),
+  phoneNumber: z.string().trim().min(1).max(20).nullable().optional(),
+  avatarUrl: z.url().max(2048).refine(value => /^https?:\/\//i.test(value), 'Usa una URL HTTP o HTTPS').nullable().optional(),
+  dateOfBirth: profileBirthDate.optional(),
+  bio: z.string().trim().max(2000).nullable().optional(),
+}).refine(nonEmpty, 'Envía al menos un campo');
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+export interface UserProfile {
+  userId: string; username: string | null; email: string;
+  status: { statusId: string; name: string };
+  userType: { typeId: string; name: string | null } | null;
+  department: { departmentId: string; name: string } | null;
+  roles: { roleId: string; name: string | null }[];
+  firstName: string | null; lastName: string | null; phoneNumber: string | null;
+  avatarUrl: string | null; dateOfBirth: string | null; bio: string | null; shift: string | null;
+  createdAt: string | null; updatedAt: string | null;
+}

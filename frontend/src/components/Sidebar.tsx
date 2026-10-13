@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
-  Users, 
-  User, // <--- Importamos el ícono de perfil
+  Users,  // <--- Importamos el ícono de perfil
   CalendarCheck, 
   MapPin, 
   Box, 
@@ -15,12 +14,13 @@ import {
   HelpCircle, 
   Info,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 
 const MENU_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Mi Perfil', href: '/profile', icon: User }, // <--- Agregamos la opción fija del perfil aquí
+  { name: 'Mi Perfil', href: '/perfil', icon: User },
   { name: 'Usuarios y Roles', href: '/admin', icon: Users },
   { name: 'Actividades', href: '/activities', icon: CalendarCheck },
   { name: 'Espacios', href: '/spaces', icon: MapPin },

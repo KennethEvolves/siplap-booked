@@ -129,3 +129,19 @@ export async function getUserProfile(token: string): Promise<UserProfileResponse
 
   return res.json();
 }
+
+export interface UpdateProfilePayload {
+  email?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  dateOfBirth?: string | null;
+  bio?: string | null;
+}
+
+export async function updateUserProfile(payload: UpdateProfilePayload): Promise<UserProfileResponse> {
+  return apiFetch<UserProfileResponse>('/api/users/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}

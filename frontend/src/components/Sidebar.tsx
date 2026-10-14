@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
-  Users, 
+  Users,  // <--- Importamos el ícono de perfil
   CalendarCheck, 
   MapPin, 
   Box, 

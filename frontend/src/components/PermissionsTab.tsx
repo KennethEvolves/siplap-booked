@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import CreatePermissionForm from './CreatePermissionForm';
 import type { LucideIcon } from 'lucide-react';

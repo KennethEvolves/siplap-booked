@@ -129,3 +129,74 @@ export async function getUserProfile(token: string): Promise<UserProfileResponse
 
   return res.json();
 }
+
+export interface UpdateProfilePayload {
+  email?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  dateOfBirth?: string | null;
+  bio?: string | null;
+}
+
+export async function updateUserProfile(payload: UpdateProfilePayload): Promise<UserProfileResponse> {
+  return apiFetch<UserProfileResponse>('/api/users/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ==========================================
+// Módulo de Actividades (RBAC + Workflows)
+// ==========================================
+
+export type ActivityStatus = 'PENDIENTE' | 'APROBADO' | 'NO_APROBADO' | 'CANCELADO' | 'REPROGRAMACION';
+
+export interface ActivityItem {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location?: string | null;
+  status: ActivityStatus;
+  createdById: string;
+  creatorName?: string;
+  departmentId?: string | null;
+}
+
+export interface CreateActivityPayload {
+  title: string;
+  description: string;
+  date: string;
+  location?: string | null;
+  createdById?: string; // Solo permitido para usuarios con activity:manage
+}
+
+export interface UpdateActivityStatusPayload {
+  status: ActivityStatus;
+  comment?: string;
+}
+
+// Obtener listado de actividades
+export async function getActivities(): Promise<{ activities: ActivityItem[] }> {
+  return apiFetch<{ activities: ActivityItem[] }>('/api/activities');
+}
+
+// Crear nueva actividad
+export async function createActivity(payload: CreateActivityPayload): Promise<{ activity: ActivityItem }> {
+  return apiFetch<{ activity: ActivityItem }>('/api/activities', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// Actualizar dictamen / estado de la actividad (Directivos)
+export async function updateActivityStatus(
+  activityId: string, 
+  payload: UpdateActivityStatusPayload
+): Promise<{ activity: ActivityItem }> {
+  return apiFetch<{ activity: ActivityItem }>(`/api/activities/${activityId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}

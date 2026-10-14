@@ -4,6 +4,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
+import CreatePermissionForm from './CreatePermissionForm';
+import type { LucideIcon } from 'lucide-react';
 import { 
   Shield, 
   Users, 
@@ -30,16 +32,28 @@ interface RoleItem {
 }
 
 // Configuración visual por módulo institucional
-const MODULE_CONFIG: Record<string, { label: string; icon: any }> = {
+const MODULE_CONFIG: Record<string, { label: string; icon: LucideIcon }> = {
   manage: { label: 'Administración Global', icon: Shield },
   users: { label: 'Usuarios', icon: Users },
   roles: { label: 'Roles y Accesos', icon: KeyRound },
   activities: { label: 'Actividades', icon: CalendarCheck },
+  activity: { label: 'Actividades — permisos por alcance', icon: CalendarCheck },
   spaces: { label: 'Espacios', icon: MapPin },
   resources: { label: 'Recursos', icon: Box },
   reservations: { label: 'Reservaciones', icon: Clock },
   reports: { label: 'Reportes y Evidencias', icon: FileText },
 };
+
+async function fetchPermissionData() {
+  const [rolesRes, permsRes] = await Promise.all([
+    apiFetch<RoleItem[] | { roles: RoleItem[] }>('/roles'),
+    apiFetch<PermissionItem[] | { permissions: PermissionItem[] }>('/permissions'),
+  ]);
+  return {
+    rolesList: Array.isArray(rolesRes) ? rolesRes : rolesRes.roles,
+    permsList: Array.isArray(permsRes) ? permsRes : permsRes.permissions,
+  };
+}
 
 export default function PermissionsTab() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
@@ -52,44 +66,42 @@ export default function PermissionsTab() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  // 1. Cargar roles y permisos del backend
-  const loadData = async () => {
+  function selectRole(role: RoleItem) {
+    setSelectedRole(role);
+    setAssignedPermissionIds((role.permissions ?? []).map(p => p.permissionId));
+    setSuccess('');
+    setError('');
+  }
+
+  async function loadData() {
+    setLoading(true);
     try {
-      setLoading(true);
-      const [rolesRes, permsRes]: [any, any] = await Promise.all([
-        apiFetch('/roles'),
-        apiFetch('/permissions'),
-      ]);
-
-      const rolesList: RoleItem[] = Array.isArray(rolesRes) ? rolesRes : rolesRes.roles;
-      const permsList: PermissionItem[] = Array.isArray(permsRes) ? permsRes : permsRes.permissions;
-
-      setRoles(rolesList || []);
-      setPermissions(permsList || []);
-
-      if (rolesList && rolesList.length > 0) {
-        selectRole(rolesList[0]);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
+      const { rolesList, permsList } = await fetchPermissionData();
+      setRoles(rolesList);
+      setPermissions(permsList);
+      const role = rolesList.find(item => item.roleId === selectedRole?.roleId) ?? rolesList[0];
+      if (role) selectRole(role);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
-    loadData();
+    let active = true;
+    fetchPermissionData().then(({ rolesList, permsList }) => {
+      if (!active) return;
+      setRoles(rolesList);
+      setPermissions(permsList);
+      const role = rolesList[0];
+      if (role) {
+        setSelectedRole(role);
+        setAssignedPermissionIds((role.permissions ?? []).map(p => p.permissionId));
+      }
+    }).catch((error: unknown) => {
+      if (active) setError(error instanceof Error ? error.message : 'Error al cargar los datos');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
-
-  // 2. Al seleccionar un rol, sincronizar sus permisos asignados
-  const selectRole = (role: RoleItem) => {
-    setSelectedRole(role);
-    const activeIds = role.permissions ? role.permissions.map((p) => p.permissionId) : [];
-    setAssignedPermissionIds(activeIds);
-    setSuccess('');
-    setError('');
-  };
-
   // 3. Conmutar el switch de un permiso
   const togglePermission = (permissionId: string) => {
     setAssignedPermissionIds((prev) =>
@@ -154,6 +166,7 @@ export default function PermissionsTab() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Columna Izquierda: Lista de Roles */}
       <div className="lg:col-span-5 space-y-4">
+        <CreatePermissionForm onCreated={loadData} />
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <h2 className="text-base font-bold text-slate-900">Roles del equipo</h2>
           <p className="text-xs text-slate-500 mt-0.5">Define niveles de acceso según las responsabilidades.</p>
@@ -253,6 +266,8 @@ export default function PermissionsTab() {
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
+                            aria-label={perm.slug}
+                            disabled={busy}
                             checked={isChecked}
                             onChange={() => togglePermission(perm.permissionId)}
                             className="sr-only peer"

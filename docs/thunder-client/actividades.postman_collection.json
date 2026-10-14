@@ -1,0 +1,409 @@
+{
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4001"
+    },
+    {
+      "key": "superuserToken",
+      "value": ""
+    },
+    {
+      "key": "directiveToken",
+      "value": ""
+    },
+    {
+      "key": "leadToken",
+      "value": ""
+    },
+    {
+      "key": "ownActivityId",
+      "value": ""
+    },
+    {
+      "key": "otherActivityId",
+      "value": ""
+    },
+    {
+      "key": "creatorId",
+      "value": ""
+    }
+  ],
+  "info": {
+    "description": "Configurar tokens obtenidos con POST /auth/login. Copiar activityId de POST a ownActivityId u otherActivityId. Ejecutar DELETE solo con actividades de prueba.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "name": "SIPLAP - Permisos de Actividades"
+  },
+  "item": [
+    {
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{superuserToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/capabilities"
+      },
+      "name": "01 Superuser - capacidades"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{superuserToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/creators"
+      },
+      "name": "02 Superuser - creadores"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{leadToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities",
+        "body": {
+          "raw": "{\r\n  \"title\": \"Prueba lead\",\r\n  \"startDate\": \"2026-11-10\",\r\n  \"endDate\": \"2026-11-11\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "03 Lead - crear propia (201)"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{leadToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities"
+      },
+      "name": "04 Lead - listar propias (200)"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{leadToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{ownActivityId}}"
+      },
+      "name": "05 Lead - ver propia (200)"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{leadToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}"
+      },
+      "name": "06 Lead - ver ajena (404)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{leadToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{ownActivityId}}",
+        "body": {
+          "raw": "{\r\n  \"title\": \"Prueba modificada\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "07 Lead - modificar propia (200)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{leadToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{ownActivityId}}/approval",
+        "body": {
+          "raw": "{\r\n  \"status\": \"approved\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "08 Lead - aprobar (403)"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{superuserToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities",
+        "body": {
+          "raw": "{\r\n  \"title\": \"Prueba delegada\",\r\n  \"creatorId\": \"{{creatorId}}\",\r\n  \"startDate\": \"2026-11-10\",\r\n  \"endDate\": \"2026-11-11\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "09 Superuser - crear para otro (201)"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities"
+      },
+      "name": "10 Directive - listar todas (200)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}",
+        "body": {
+          "raw": "{\r\n  \"title\": \"Modificada por directivo\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "11 Directive - modificar ajena (200)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}/approval",
+        "body": {
+          "raw": "{\r\n  \"status\": \"approved\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "12 Directive - aprobado (200)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}/approval",
+        "body": {
+          "raw": "{\r\n  \"status\": \"rejected\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "13 Directive - no aprobado (200)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}/approval",
+        "body": {
+          "raw": "{\r\n  \"status\": \"cancelled\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "14 Directive - cancelado (200)"
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}/approval",
+        "body": {
+          "raw": "{\r\n  \"status\": \"rescheduled\"\r\n}",
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "name": "15 Directive - reprogramacion (200)"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{directiveToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}"
+      },
+      "name": "16 Directive - eliminar (403)"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{superuserToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/activities/{{otherActivityId}}"
+      },
+      "name": "17 Superuser - eliminar prueba (204)"
+    }
+  ]
+}

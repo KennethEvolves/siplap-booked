@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ActivitiesModule } from './activities/infrastructure/activities.module.js';
 
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/infrastructure/auth.module.js';
@@ -10,6 +11,7 @@ import { AppController } from './app.controller.js';
 
 @Module({
   imports: [
+    ActivitiesModule,
     PrismaModule,
     AuthModule,
     UsersModule,

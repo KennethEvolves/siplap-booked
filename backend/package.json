@@ -25,7 +25,8 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "postinstall": "prisma generate",
     "test:rbac": "pnpm build && node --test test/rbac.http.test.mjs",
-    "test:rbac:postgres": "node test/rbac.postgres.mjs"
+    "test:rbac:postgres": "node test/rbac.postgres.mjs",
+    "test:activities:postgres": "pnpm build && node test/activities.postgres.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

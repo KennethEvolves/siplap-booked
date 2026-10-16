@@ -14,9 +14,11 @@ export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<AuthUser | null> {
     return this.findUser({ user_id: id });
   }
+
   async findByEmail(email: string): Promise<AuthUser | null> {
     return this.findUser({ email });
   }
+
   private async findUser(where: { user_id?: string; email?: string }): Promise<AuthUser | null> {
     const user = await this.prisma.users.findFirst({
       where,
@@ -38,12 +40,23 @@ export class PrismaUserRepository implements UserRepository {
             roles: {
               select: {
                 name: true,
+                role_permissions: {
+                  select: {
+                    permissions: {
+                      select: {
+                        slug: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         },
       },
     });
+
+    console.log('--- USER ROLES PRISMA ---', JSON.stringify(user?.user_roles, null, 2));
 
     if (!user) {
       return null;
@@ -53,13 +66,28 @@ export class PrismaUserRepository implements UserRepository {
       .map((userRole) => userRole.roles.name)
       .filter((role): role is string => role !== null);
 
+    // Extraer y aplanar todos los slugs de permisos únicos de todos sus roles
+    const permissionsSet = new Set<string>();
+    for (const ur of user.user_roles) {
+      const rolePerms = ur.roles?.role_permissions || [];
+      for (const rp of rolePerms) {
+        if (rp.permissions?.slug) {
+          permissionsSet.add(rp.permissions.slug);
+        }
+      }
+    }
+    const permissions = Array.from(permissionsSet);
+
+    console.log('--- PERMISOS CALCULADOS EN REPO ---', permissions);
+
     return {
       userId: user.user_id,
       username: user.username,
       email: user.email,
       passwordHash: user.password_hash,
-      status: user.user_statuses.name ?? null,
+      status: user.user_statuses?.name ?? null,
       roles,
-    };
+      permissions,
+    } as any;
   }
 }

@@ -12,6 +12,7 @@ export interface AuthenticatedUser {
   sub: string;
   email: string;
   roles: string[];
+  permissions?: string[];
   iat?: number;
   exp?: number;
 }
@@ -49,7 +50,16 @@ export class JwtAuthGuard implements CanActivate {
       if (typeof payload.sub !== 'string') throw new UnauthorizedException();
       const user = await this.users.findById(payload.sub);
       if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException();
-      request.user = { ...payload, email: user.email, roles: user.roles };
+
+      // Extraer permisos del usuario consultado en BD o del payload
+      const permissions = (user as any).permissions || payload.permissions || [];
+
+      request.user = {
+        ...payload,
+        email: user.email,
+        roles: user.roles,
+        permissions,
+      };
 
       return true;
     } catch {

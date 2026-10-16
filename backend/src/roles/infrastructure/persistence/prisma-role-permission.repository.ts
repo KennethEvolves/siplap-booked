@@ -83,4 +83,18 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
       createdAt: assignment.created_at,
     };
   }
+
+  async removePermission(
+    roleId: string,
+    permissionId: string,
+  ): Promise<void> {
+    await prismaWrite(() =>
+      this.prisma.role_permissions.deleteMany({
+        where: {
+          role_id: roleId,
+          permission_id: permissionId,
+        },
+      }),
+    );
+  }
 }

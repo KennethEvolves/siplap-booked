@@ -44,14 +44,18 @@ export class LoginUseCase {
       throw new InactiveUserError();
     }
 
-    // 4. Generar token JWT para cualquier cuenta activa
+    // 4. Extraer permisos cargados desde el repositorio
+    const permissions: string[] = (user as any).permissions || [];
+
+    // 5. Generar token JWT incluyendo roles y permisos
     const accessToken = await this.tokenService.sign({
       sub: user.userId,
       email: user.email,
       roles: user.roles,
-    });
+      permissions,
+    } as any);
 
-    // 5. Devolver resultado seguro
+    // 6. Devolver resultado seguro hacia el frontend
     return {
       accessToken,
 
@@ -60,7 +64,8 @@ export class LoginUseCase {
         username: user.username,
         email: user.email,
         roles: user.roles,
+        permissions,
       },
-    };
+    } as any;
   }
 }

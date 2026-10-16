@@ -6,10 +6,14 @@ export const BASE_PERMISSIONS = [
   'users:read',
   'users:update',
   'users:delete',
-  'activities:create',
-  'activities:read',
-  'activities:update',
-  'activities:delete',
+  // Módulo de Actividades oficial (Tarea #101326)
+  'activity:manage',
+  'activity:view_all',
+  'activity:approve_all',
+  'activity:update_all',
+  'activity:create_own',
+  'activity:view_own',
+  'activity:update_own',
 ] as const;
 
 export const FULL_PERMISSIONS_CATALOG = [
@@ -29,12 +33,14 @@ export const FULL_PERMISSIONS_CATALOG = [
   { slug: 'roles:delete', name: 'ELIMINAR ROLES', description: 'Dar de baja roles del sistema' },
   { slug: 'permissions:assign', name: 'ASIGNAR PERMISOS', description: 'Vincular y desvincular permisos a roles' },
 
-  // 4. Módulo de Actividades
-  { slug: 'activities:create', name: 'CREAR ACTIVIDADES', description: 'Registrar actividades ordinarias y extraordinarias' },
-  { slug: 'activities:read', name: 'CONSULTAR ACTIVIDADES', description: 'Ver el listado y agenda de actividades' },
-  { slug: 'activities:update', name: 'EDITAR ACTIVIDADES', description: 'Modificar actividades no aprobadas' },
-  { slug: 'activities:delete', name: 'ELIMINAR ACTIVIDADES', description: 'Cancelar o remover actividades' },
-  { slug: 'activities:approve', name: 'APROBAR ACTIVIDADES', description: 'Dictamen de aprobación por las 3 direcciones' },
+  // 4. Módulo de Actividades (Oficial según requerimiento)
+  { slug: 'activity:manage', name: 'GESTIONAR ACTIVIDADES', description: 'Control total: asignar creador, ver, modificar, aprobar y eliminar actividades' },
+  { slug: 'activity:view_all', name: 'CONSULTAR TODAS LAS ACTIVIDADES', description: 'Ver la totalidad de las actividades institucionales' },
+  { slug: 'activity:approve_all', name: 'APROBAR ACTIVIDADES', description: 'Dictamen de aprobación (aprobado, no aprobado, reprogramación, cancelación)' },
+  { slug: 'activity:update_all', name: 'EDITAR TODAS LAS ACTIVIDADES', description: 'Modificar cualquier actividad del sistema' },
+  { slug: 'activity:create_own', name: 'CREAR ACTIVIDADES PROPIAS', description: 'Registrar actividades ordinarias y extraordinarias' },
+  { slug: 'activity:view_own', name: 'CONSULTAR ACTIVIDADES PROPIAS', description: 'Ver el listado y agenda de actividades propias' },
+  { slug: 'activity:update_own', name: 'EDITAR ACTIVIDADES PROPIAS', description: 'Modificar actividades propias no aprobadas' },
 
   // 5. Módulo de Espacios
   { slug: 'spaces:create', name: 'CREAR ESPACIOS', description: 'Registrar recintos, auditorios y salas' },
@@ -74,9 +80,33 @@ export async function seedRbac(prisma: PrismaClient) {
     });
   }
 
+  // 2. Limpiar permisos viejos/obsoletos de actividades para evitar duplicados en la UI
+  const obsoleteSlugs = [
+    'activities:create',
+    'activities:read',
+    'activities:update',
+    'activities:delete',
+    'activities:approve',
+  ];
+
+  for (const oldSlug of obsoleteSlugs) {
+    const oldPerm = await prisma.permissions.findFirst({
+      where: { slug: oldSlug },
+    });
+    if (oldPerm) {
+      // Eliminar dependencias en role_permissions y luego el permiso
+      await prisma.role_permissions.deleteMany({
+        where: { permission_id: oldPerm.permission_id },
+      });
+      await prisma.permissions.delete({
+        where: { permission_id: oldPerm.permission_id },
+      });
+    }
+  }
+
   const assignedPermissions: string[] = [];
 
-  // 2. Sembrar permisos sin depender de restricción única en slug
+  // 3. Sembrar catálogo limpio de permisos
   for (const item of FULL_PERMISSIONS_CATALOG) {
     let perm = await prisma.permissions.findFirst({
       where: { slug: item.slug },
@@ -100,7 +130,7 @@ export async function seedRbac(prisma: PrismaClient) {
       });
     }
 
-    // 3. Vincular el permiso al rol SUPERUSUARIO si aún no lo tiene
+    // 4. Vincular al rol SUPERUSUARIO
     const existingLink = await prisma.role_permissions.findFirst({
       where: {
         role_id: superRole.role_id,

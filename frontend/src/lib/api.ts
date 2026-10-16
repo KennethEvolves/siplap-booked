@@ -150,53 +150,64 @@ export async function updateUserProfile(payload: UpdateProfilePayload): Promise<
 // Módulo de Actividades (RBAC + Workflows)
 // ==========================================
 
-export type ActivityStatus = 'PENDIENTE' | 'APROBADO' | 'NO_APROBADO' | 'CANCELADO' | 'REPROGRAMACION';
+export type BackendActivityStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'rescheduled';
 
-export interface ActivityItem {
-  id: string;
+export interface BackendActivity {
+  activityId: string;
+  title: string | null;
+  description: string | null;
+  type?: 'ordinary' | 'extraordinary' | 'entry' | null;
+  startDate: string | null;
+  endDate: string | null;
+  creator: { userId: string; username: string | null };
+  status: BackendActivityStatus;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CreateActivityInput {
   title: string;
-  description: string;
-  date: string;
-  location?: string | null;
-  status: ActivityStatus;
-  createdById: string;
-  creatorName?: string;
-  departmentId?: string | null;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+  creatorId?: string;
 }
 
-export interface CreateActivityPayload {
-  title: string;
-  description: string;
-  date: string;
-  location?: string | null;
-  createdById?: string; // Solo permitido para usuarios con activity:manage
+export async function getActivities(): Promise<{ activities: BackendActivity[] }> {
+  return apiFetch<{ activities: BackendActivity[] }>('/api/activities');
 }
 
-export interface UpdateActivityStatusPayload {
-  status: ActivityStatus;
-  comment?: string;
-}
-
-// Obtener listado de actividades
-export async function getActivities(): Promise<{ activities: ActivityItem[] }> {
-  return apiFetch<{ activities: ActivityItem[] }>('/api/activities');
-}
-
-// Crear nueva actividad
-export async function createActivity(payload: CreateActivityPayload): Promise<{ activity: ActivityItem }> {
-  return apiFetch<{ activity: ActivityItem }>('/api/activities', {
+export async function createActivity(input: CreateActivityInput): Promise<{ activity: BackendActivity }> {
+  return apiFetch<{ activity: BackendActivity }>('/api/activities', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(input),
   });
 }
 
-// Actualizar dictamen / estado de la actividad (Directivos)
-export async function updateActivityStatus(
+export async function updateActivityApproval(
   activityId: string, 
-  payload: UpdateActivityStatusPayload
-): Promise<{ activity: ActivityItem }> {
-  return apiFetch<{ activity: ActivityItem }>(`/api/activities/${activityId}/status`, {
+  status: 'approved' | 'rejected' | 'cancelled' | 'rescheduled'
+): Promise<{ activity: BackendActivity }> {
+  return apiFetch<{ activity: BackendActivity }>(`/api/activities/${activityId}/approval`, {
     method: 'PATCH',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ status }),
+  });
+}
+
+export interface UpdateActivityInput {
+  title?: string;
+  description?: string | null;
+  startDate?: string;
+  endDate?: string;
+  creatorId?: string;
+}
+
+export async function updateActivity(
+  activityId: string,
+  input: UpdateActivityInput
+): Promise<{ activity: BackendActivity }> {
+  return apiFetch<{ activity: BackendActivity }>(`/api/activities/${activityId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
   });
 }

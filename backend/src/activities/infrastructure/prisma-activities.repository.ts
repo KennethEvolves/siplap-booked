@@ -65,6 +65,7 @@ function data(input: UpdateActivity) {
     requires_certified: input.requiresCertified,
     requires_authority: input.requiresAuthority,
     objective_id: input.objectiveId,
+    creator_id: input.creatorId !== undefined ? input.creatorId : undefined,
     updated_at: new Date(),
   };
 }

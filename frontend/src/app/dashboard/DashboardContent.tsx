@@ -15,6 +15,8 @@ interface DashboardContentProps {
 }
 
 export default function DashboardContent({ user }: DashboardContentProps) {
+  console.log('--- DEBUG USUARIO ---', user);
+  console.log('--- PERMISOS EN ARRAY ---', user?.permissions);
   const roles: string[] = user?.roles ?? [];
 
   const isSuperUser = roles.some((r) =>
@@ -28,10 +30,13 @@ export default function DashboardContent({ user }: DashboardContentProps) {
         'users:read',
         'users:update',
         'users:delete',
-        'activities:create',
-        'activities:read',
-        'activities:update',
-        'activities:delete',
+        'activity:manage',
+        'activity:view_all',
+        'activity:approve_all',
+        'activity:update_all',
+        'activity:create_own',
+        'activity:view_own',
+        'activity:update_own',
       ]
     : (user?.permissions ?? []);
 
@@ -41,7 +46,14 @@ export default function DashboardContent({ user }: DashboardContentProps) {
   };
 
   const canAccessUsers = isSuperUser || hasPermission('users:read');
-  const canAccessActivities = isSuperUser || hasPermission('activities:read');
+
+  // Comprueba tanto los slugs nuevos como superusuario
+  const canAccessActivities =
+    isSuperUser ||
+    hasPermission('activity:manage') ||
+    hasPermission('activity:view_all') ||
+    hasPermission('activity:view_own') ||
+    hasPermission('activity:create_own');
 
   return (
     <div className="flex min-h-screen bg-slate-50">

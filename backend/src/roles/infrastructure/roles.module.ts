@@ -19,6 +19,7 @@ import { CreateRoleUseCase } from '../application/use-cases/create-role.use-case
 import { GetRolesUseCase } from '../application/use-cases/get-roles.use-case.js';
 
 import { AssignPermissionToRoleUseCase } from '../application/use-cases/assign-permission-to-role.use-case.js';
+import { RemovePermissionFromRoleUseCase } from '../application/use-cases/remove-permission-from-role.use-case.js';
 
 import { RolesController } from '../presentation/roles.controller.js';
 
@@ -76,6 +77,16 @@ import { RolesController } from '../presentation/roles.controller.js';
 
       useFactory: (rolePermissionRepository: RolePermissionRepository) => {
         return new AssignPermissionToRoleUseCase(rolePermissionRepository);
+      },
+
+      inject: [RolePermissionRepository],
+    },
+
+    {
+      provide: RemovePermissionFromRoleUseCase,
+
+      useFactory: (rolePermissionRepository: RolePermissionRepository) => {
+        return new RemovePermissionFromRoleUseCase(rolePermissionRepository);
       },
 
       inject: [RolePermissionRepository],

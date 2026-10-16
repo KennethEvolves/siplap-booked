@@ -90,6 +90,7 @@ export class AuthController {
         userId: request.user.sub,
         email: request.user.email,
         roles: request.user.roles,
+        permissions: (request.user as any).permissions || [],
       },
     };
   }

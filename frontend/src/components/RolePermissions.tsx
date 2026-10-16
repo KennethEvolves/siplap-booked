@@ -2,11 +2,22 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
-import type { RoleItem } from './RolesTab';
 
-interface PermissionItem { permissionId: string; name: string | null; slug: string; description: string | null; }
+export interface RoleItem {
+  roleId: string;
+  name: string | null;
+  permissions?: PermissionItem[];
+}
+
+interface PermissionItem {
+  permissionId: string;
+  name: string | null;
+  slug: string;
+  description: string | null;
+}
+
 export default function RolePermissions({ roles, loadingRoles, onAssigned }: {
   roles: RoleItem[]; loadingRoles: boolean; onAssigned: () => Promise<void>;
 }) {
@@ -17,10 +28,12 @@ export default function RolePermissions({ roles, loadingRoles, onAssigned }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
   const role = roles.find(item => item.roleId === roleId);
   const assigned = role?.permissions ?? [];
   const available = permissions.filter(item => !assigned.some(current => current.permissionId === item.permissionId));
   const chosen = available.find(item => item.permissionId === permissionId);
+
   useEffect(() => {
     let active = true;
     apiFetch<{ permissions: PermissionItem[] } | PermissionItem[]>('/permissions')
@@ -29,6 +42,7 @@ export default function RolePermissions({ roles, loadingRoles, onAssigned }: {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+
   async function assign(event: FormEvent) {
     event.preventDefault();
     if (!role || !chosen || busy) return;
@@ -43,6 +57,7 @@ export default function RolePermissions({ roles, loadingRoles, onAssigned }: {
       await onAssigned();
     } finally { setBusy(false); }
   }
+
   return (
     <Card title="Asignar permisos a un rol">
       <form onSubmit={assign} className="space-y-4">

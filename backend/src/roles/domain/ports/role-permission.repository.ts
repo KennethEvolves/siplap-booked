@@ -22,4 +22,9 @@ export abstract class RolePermissionRepository {
     roleId: string,
     permissionId: string,
   ): Promise<RolePermissionAssignment>;
+
+  abstract removePermission(
+    roleId: string,
+    permissionId: string,
+  ): Promise<void>;
 }

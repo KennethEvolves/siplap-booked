@@ -44,6 +44,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: data.user?.username || data.user?.name,
             email: data.user?.email,
             roles: data.user?.roles || [],
+            permissions: data.user?.permissions || [],
             accessToken: data.accessToken,
           };
         } catch (error) {
@@ -58,17 +59,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.accessToken = user.accessToken;
         token.roles = user.roles;
+        token.permissions = (user as any).permissions || [];
         token.userId = user.id;
       }
       if (!user && typeof token.accessToken === 'string') {
         try {
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/auth/me`, {
-            headers: { Authorization: `Bearer ${token.accessToken}` }, cache: 'no-store',
+            headers: { Authorization: `Bearer ${token.accessToken}` },
+            cache: 'no-store',
           });
           if (!response.ok) return null;
           const current = await response.json();
-          token.roles = current.user.roles;
-          token.email = current.user.email;
+          token.roles = current.user?.roles || [];
+          token.permissions = current.user?.permissions || [];
+          token.email = current.user?.email;
         } catch {
           // No autorizar con roles almacenados si no se puede validar la sesión.
           return null;
@@ -80,6 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token && session.user) {
         session.user.accessToken = typeof token.accessToken === 'string' ? token.accessToken : undefined;
         session.user.roles = Array.isArray(token.roles) ? token.roles.filter((role): role is string => typeof role === 'string') : [];
+        session.user.permissions = Array.isArray(token.permissions) ? token.permissions.filter((perm): perm is string => typeof perm === 'string') : [];
         session.user.id = typeof token.userId === 'string' ? token.userId : token.sub ?? '';
       }
       return session;

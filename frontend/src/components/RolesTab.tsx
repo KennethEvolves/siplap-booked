@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { ShieldCheck, UserPlus, Search } from 'lucide-react';
 

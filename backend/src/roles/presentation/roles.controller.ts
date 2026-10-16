@@ -25,10 +25,9 @@ import {
 } from '@nestjs/common';
 
 import { CreateRoleUseCase } from '../application/use-cases/create-role.use-case.js';
-
 import { GetRolesUseCase } from '../application/use-cases/get-roles.use-case.js';
-
 import { AssignPermissionToRoleUseCase } from '../application/use-cases/assign-permission-to-role.use-case.js';
+import { RemovePermissionFromRoleUseCase } from '../application/use-cases/remove-permission-from-role.use-case.js';
 
 import {
   InvalidRoleDataError,
@@ -43,9 +42,7 @@ import {
 } from '../application/errors/role-permission.errors.js';
 
 import type { CreateRoleDto } from '../application/dto/create-role.dto.js';
-
 import { JwtAuthGuard } from '../../auth/presentation/jwt-auth.guard.js';
-
 import { SuperUserGuard } from '../../auth/presentation/super-user.guard.js';
 
 @UseFilters(RbacExceptionFilter)
@@ -55,10 +52,9 @@ export class RolesController {
     private readonly updateUseCase: UpdateRoleUseCase,
     private readonly deleteUseCase: DeleteRoleUseCase,
     private readonly createRoleUseCase: CreateRoleUseCase,
-
     private readonly getRolesUseCase: GetRolesUseCase,
-
     private readonly assignPermissionToRoleUseCase: AssignPermissionToRoleUseCase,
+    private readonly removePermissionFromRoleUseCase: RemovePermissionFromRoleUseCase,
   ) {}
 
   @Get()
@@ -68,9 +64,7 @@ export class RolesController {
 
     return {
       message: 'Roles obtenidos correctamente',
-
       total: roles.length,
-
       roles,
     };
   }
@@ -86,7 +80,6 @@ export class RolesController {
 
       return {
         message: 'Rol creado correctamente',
-
         role,
       };
     } catch (error) {
@@ -120,7 +113,6 @@ export class RolesController {
 
       return {
         message: 'Permiso asignado al rol correctamente',
-
         assignment,
       };
     } catch (error) {
@@ -144,6 +136,42 @@ export class RolesController {
     }
   }
 
+  @Delete(':roleId/permissions/:permissionId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, SuperUserGuard)
+  async removePermission(
+    @Param('roleId', new ZodValidationPipe(uuidSchema))
+    roleId: string,
+
+    @Param('permissionId', new ZodValidationPipe(uuidSchema))
+    permissionId: string,
+  ) {
+    try {
+      await this.removePermissionFromRoleUseCase.execute({
+        roleId,
+        permissionId,
+      });
+
+      return {
+        message: 'Permiso revocado del rol correctamente',
+      };
+    } catch (error) {
+      if (error instanceof RoleNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+
+      if (error instanceof PermissionNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+
+      if (error instanceof InvalidRolePermissionDataError) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
+    }
+  }
+
   @Patch(':roleId')
   @UseGuards(JwtAuthGuard, SuperUserGuard)
   async update(
@@ -153,6 +181,7 @@ export class RolesController {
     const role = await this.updateUseCase.execute(id, body);
     return { message: 'rol actualizado correctamente', role };
   }
+
   @Delete(':roleId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard, SuperUserGuard)

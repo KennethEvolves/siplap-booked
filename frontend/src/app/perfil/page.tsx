@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, updateUserProfile, UserProfileResponse, UpdateProfilePayload } from '@/lib/api';
 import { Sidebar } from '@/components/Sidebar';
 import { 
@@ -40,10 +40,8 @@ export default function PerfilPage() {
     bio: '',
   });
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
       const data = await apiFetch<UserProfileResponse>('/api/users/profile');
       setProfileData(data.profile);
       setFormData({
@@ -63,11 +61,11 @@ export default function PerfilPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    void Promise.resolve().then(loadProfile);
+  }, [loadProfile]);
 
   const handleStartEditing = () => {
     if (!profileData) return;
@@ -127,7 +125,11 @@ export default function PerfilPage() {
     }
 
     // 3. Validación de Fecha de Nacimiento
-    if (formData.dateOfBirth) {
+    if (!formData.dateOfBirth) {
+      setFeedback({ type: 'error', message: 'La fecha de nacimiento es obligatoria.' });
+      return;
+    }
+    {
       const selectedDate = new Date(formData.dateOfBirth);
       const today = new Date();
       if (selectedDate > today) {
@@ -147,7 +149,7 @@ export default function PerfilPage() {
       firstName: formData.firstName.trim() || null,
       lastName: formData.lastName.trim() || null,
       phoneNumber: cleanPhone || null,
-      dateOfBirth: formData.dateOfBirth ? formData.dateOfBirth : null,
+      dateOfBirth: formData.dateOfBirth,
       bio: formData.bio.trim() || null,
     };
 
@@ -170,8 +172,8 @@ export default function PerfilPage() {
     : [profileData?.firstName, profileData?.lastName].filter(Boolean).join(' ') || profileData?.username || '';
 
   const avatarInitial = isEditing
-    ? (formData.firstName ? formData.firstName.charAt(0).toUpperCase() : profileData?.username.charAt(0).toUpperCase() || 'U')
-    : (profileData?.firstName ? profileData.firstName.charAt(0).toUpperCase() : profileData?.username.charAt(0).toUpperCase() || 'U');
+    ? (formData.firstName ? formData.firstName.charAt(0).toUpperCase() : profileData?.username?.charAt(0).toUpperCase() || 'U')
+    : (profileData?.firstName ? profileData.firstName.charAt(0).toUpperCase() : profileData?.username?.charAt(0).toUpperCase() || 'U');
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -340,6 +342,7 @@ export default function PerfilPage() {
                       <label className="text-slate-500 block text-xs font-semibold mb-1">Fecha de Nacimiento</label>
                       <input
                         type="date"
+                        required
                         value={formData.dateOfBirth}
                         onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"

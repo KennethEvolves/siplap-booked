@@ -12,7 +12,7 @@ export class ActivityPolicy {
     return this.permissions.includes(permission);
   }
   get manages() {
-    return this.has(P.manage);
+    return this.has('manage:all') || this.has(P.manage);
   }
   get canCreate() {
     return this.manages || this.has(P.createOwn);

@@ -95,12 +95,12 @@ export async function apiFetch<T>(
 export interface UserProfileResponse {
   profile: {
     userId: string;
-    username: string;
+    username: string | null;
     email: string;
-    status: { statusId: string; name: string } | null;
-    userType: { typeId: string; name: string } | null;
+    status: { statusId: string; name: string };
+    userType: { typeId: string; name: string | null } | null;
     department: { departmentId: string; name: string } | null;
-    roles: Array<{ roleId: string; name: string }>;
+    roles: Array<{ roleId: string; name: string | null }>;
     firstName: string | null;
     lastName: string | null;
     phoneNumber: string | null;
@@ -108,8 +108,8 @@ export interface UserProfileResponse {
     dateOfBirth: string | null;
     bio: string | null;
     shift: string | null;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: string | null;
+    updatedAt: string | null;
   };
 }
 
@@ -192,6 +192,10 @@ export async function updateActivityApproval(
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
+}
+
+export async function deleteActivity(activityId: string): Promise<void> {
+  await apiFetch<void>(`/api/activities/${activityId}`, { method: 'DELETE' });
 }
 
 export interface UpdateActivityInput {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useTransition, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useTransition, useMemo } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { ActivityModal } from '@/components/activities/ActivityModal';
 import { Button } from '@/components/ui/Button';
@@ -17,10 +17,11 @@ import {
   BackendActivityStatus,
   getActivities, 
   createActivity,
+  deleteActivity,
   updateActivity,
   updateActivityApproval
 } from '@/lib/api';
-import { Loader2, Check, AlertTriangle, ShieldCheck, Pencil } from 'lucide-react';
+import { Loader2, Check, AlertTriangle, ShieldCheck, Pencil, Trash2 } from 'lucide-react';
 
 export default function ActivitiesPage() {
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -37,10 +38,10 @@ export default function ActivitiesPage() {
   const [editingActivity, setEditingActivity] = useState<BackendActivity | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const showToast = (type: 'success' | 'error', text: string) => {
+  const showToast = useCallback((type: 'success' | 'error', text: string) => {
     setToastMessage({ type, text });
     setTimeout(() => setToastMessage(null), 3500);
-  };
+  }, []);
 
   // =========================================================================
   // MATRIZ RBAC (Evaluación granular basada en permisos de sesión)
@@ -73,9 +74,10 @@ export default function ActivitiesPage() {
   const canEditActivity = (activity: BackendActivity) => {
     if (canEditAll) return true;
     if (canEditOwn) {
-      const isOwner = 
-        (currentUserId && activity.creator?.userId === currentUserId) ||
-        (currentUsername && activity.creator?.username?.toLowerCase() === currentUsername.toLowerCase());
+      const isOwner = currentUserId
+        ? activity.creator?.userId === currentUserId
+        : currentUsername &&
+          activity.creator?.username?.toLowerCase() === currentUsername.toLowerCase();
       return Boolean(isOwner);
     }
     return false;
@@ -91,10 +93,8 @@ export default function ActivitiesPage() {
   // =========================================================================
   // CARGA DE DATOS
   // =========================================================================
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     try {
-      setLoading(true);
-
       let fetchedPermissions: string[] = [];
       let userId: string | undefined = undefined;
       let username: string | undefined = undefined;
@@ -103,7 +103,7 @@ export default function ActivitiesPage() {
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
 
-        fetchedPermissions = (session?.user?.permissions as string[]) || [];
+        fetchedPermissions = session?.user?.permissions ?? [];
         userId = session?.user?.id;
         username = session?.user?.name || undefined;
 
@@ -125,9 +125,11 @@ export default function ActivitiesPage() {
 
         if (!hasAccessToAll) {
           list = list.filter((act) => {
-            const matchesId = userId && (act.creator?.userId === userId || (act as any).creatorId === userId);
-            const matchesName = username && act.creator?.username?.toLowerCase() === username.toLowerCase();
-            return Boolean(matchesId || matchesName);
+            if (userId) return act.creator?.userId === userId;
+            return Boolean(
+              username &&
+                act.creator?.username?.toLowerCase() === username.toLowerCase(),
+            );
           });
         }
 
@@ -138,11 +140,11 @@ export default function ActivitiesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
-    refreshData();
-  }, []);
+    void Promise.resolve().then(refreshData);
+  }, [refreshData]);
 
   // =========================================================================
   // CREACIÓN Y EDICIÓN (POST / PATCH /api/activities)
@@ -225,6 +227,17 @@ export default function ActivitiesPage() {
       showToast('success', `Actividad actualizada a: ${newStatus}`);
     } catch {
       showToast('error', 'Error al procesar el dictamen o permisos insuficientes.');
+    }
+  };
+
+  const handleDeleteActivity = async (activity: BackendActivity) => {
+    if (!isSuperUser || !window.confirm(`¿Eliminar la actividad "${activity.title || 'Sin título'}"?`)) return;
+    try {
+      await deleteActivity(activity.activityId);
+      setActivities((previous) => previous.filter((item) => item.activityId !== activity.activityId));
+      showToast('success', 'Actividad eliminada.');
+    } catch {
+      showToast('error', 'No se pudo eliminar la actividad o faltan permisos.');
     }
   };
 
@@ -372,6 +385,18 @@ export default function ActivitiesPage() {
                                 </Button>
                               )}
 
+                              {isSuperUser && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void handleDeleteActivity(activity)}
+                                  className="cursor-pointer text-rose-600 border-rose-200 hover:bg-rose-50 h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all flex items-center gap-1"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  Eliminar
+                                </Button>
+                              )}
+
                               {/* Botones de dictamen de aprobación si cuenta con permiso canApprove */}
                               {canApprove && (
                                 <>
@@ -430,6 +455,7 @@ export default function ActivitiesPage() {
           {/* Modal para Edición */}
           {editingActivity && (
             <ActivityModal
+              key={editingActivity.activityId}
               userRole={roleScope}
               initialActivity={editingActivity}
               isOpen={isEditModalOpen}

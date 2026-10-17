@@ -45,7 +45,7 @@ export class LoginUseCase {
     }
 
     // 4. Extraer permisos cargados desde el repositorio
-    const permissions: string[] = (user as any).permissions || [];
+    const permissions = user.permissions;
 
     // 5. Generar token JWT incluyendo roles y permisos
     const accessToken = await this.tokenService.sign({
@@ -53,7 +53,7 @@ export class LoginUseCase {
       email: user.email,
       roles: user.roles,
       permissions,
-    } as any);
+    });
 
     // 6. Devolver resultado seguro hacia el frontend
     return {
@@ -66,6 +66,6 @@ export class LoginUseCase {
         roles: user.roles,
         permissions,
       },
-    } as any;
+    };
   }
 }

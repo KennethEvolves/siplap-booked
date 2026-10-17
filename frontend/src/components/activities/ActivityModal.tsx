@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/Button';
 import { apiFetch, BackendActivity } from '@/lib/api';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface ActivityModalProps {
   userRole: 'superuser' | 'directive' | 'lead';
@@ -31,7 +31,6 @@ interface ActivityModalProps {
 interface UserOption {
   userId: string;
   username: string;
-  email: string;
 }
 
 export function ActivityModal({ 
@@ -47,45 +46,30 @@ export function ActivityModal({
   const setOpen = externalOnOpenChange || setInternalOpen;
 
   const isEditing = Boolean(initialActivity);
-  const today = new Date().toISOString().split('T')[0];
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
-  const [creatorId, setCreatorId] = useState('');
+  const [title, setTitle] = useState(initialActivity?.title ?? '');
+  const [description, setDescription] = useState(initialActivity?.description ?? '');
+  const [startDate, setStartDate] = useState(initialActivity?.startDate?.slice(0, 10) ?? '');
+  const [endDate, setEndDate] = useState(initialActivity?.endDate?.slice(0, 10) ?? '');
+  const [creatorId, setCreatorId] = useState(initialActivity?.creator?.userId ?? '');
   const [usersList, setUsersList] = useState<UserOption[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSuperUser = userRole === 'superuser';
 
-  // Sincronizar campos cuando se abre para editar o crear
-  useEffect(() => {
-    if (open) {
-      if (initialActivity) {
-        setTitle(initialActivity.title || '');
-        setDescription(initialActivity.description || '');
-        setStartDate(
-          initialActivity.startDate 
-            ? initialActivity.startDate.split('T')[0] 
-            : today
-        );
-        setEndDate(
-          initialActivity.endDate 
-            ? initialActivity.endDate.split('T')[0] 
-            : today
-        );
-        setCreatorId(initialActivity.creator?.userId || '');
-      } else {
-        setTitle('');
-        setDescription('');
-        setStartDate(today);
-        setEndDate(today);
-        setCreatorId('');
-      }
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isSubmitting) return;
+    if (nextOpen && !initialActivity) {
+      const now = new Date();
+      const today = [now.getFullYear(), `${now.getMonth() + 1}`.padStart(2, '0'), `${now.getDate()}`.padStart(2, '0')].join('-');
+      setTitle('');
+      setDescription('');
+      setStartDate(today);
+      setEndDate(today);
+      setCreatorId('');
     }
-  }, [open, initialActivity, today]);
+    setOpen(nextOpen);
+  };
 
   // Cargar directorio de usuarios solo si es Superusuario
   useEffect(() => {
@@ -93,16 +77,11 @@ export function ActivityModal({
       const fetchUsers = async () => {
         try {
           setLoadingUsers(true);
-          const res = await apiFetch<{ users: UserOption[] } | UserOption[]>('/users');
-          const rawList = Array.isArray(res) ? res : (res?.users || []);
-          
-          const mappedUsers: UserOption[] = rawList.map((u: any) => ({
-            userId: u.userId || u.id,
-            username: u.username || 'Sin nombre',
-            email: u.email || '',
-          }));
-
-          setUsersList(mappedUsers);
+          const res = await apiFetch<{ users: UserOption[] }>('/api/activities/creators');
+          setUsersList(res.users.map((user) => ({
+            userId: user.userId,
+            username: user.username || 'Sin nombre',
+          })));
         } catch {
           // Mantener lista vacía si falla de forma segura
         } finally {
@@ -139,7 +118,7 @@ export function ActivityModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => !isSubmitting && setOpen(val)}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {triggerButton !== undefined ? (
         <DialogTrigger asChild>{triggerButton}</DialogTrigger>
       ) : (
@@ -217,14 +196,16 @@ export function ActivityModal({
             />
           </div>
 
-          {/* Selector de creador sólo para superusuario (cumpliendo el ticket para POST/PATCH) */}
+          {/* Solo el superusuario puede asignar o cambiar al responsable. */}
           {isSuperUser && (
             <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3 space-y-1.5">
               <label className="block text-xs font-bold text-blue-900 uppercase tracking-wider">
                 Asignar Responsable / Creador
               </label>
               <p className="text-[11px] text-blue-700">
-                Selecciona al usuario que figurará como autor de esta actividad.
+                {isEditing
+                  ? 'Selecciona el usuario que quedará como responsable de esta actividad.'
+                  : 'Selecciona al usuario que figurará como responsable de esta actividad.'}
               </p>
               
               {loadingUsers ? (
@@ -239,10 +220,18 @@ export function ActivityModal({
                   className="w-full rounded-xl border border-blue-200 px-3 py-2 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all cursor-pointer"
                   disabled={isSubmitting}
                 >
-                  <option value="">Mantener autor actual / Superusuario</option>
+                  <option value="">
+                    {isEditing ? 'Conservar responsable actual' : 'Usar mi usuario'}
+                  </option>
+                  {initialActivity?.creator &&
+                    !usersList.some((user) => user.userId === initialActivity.creator.userId) && (
+                      <option value={initialActivity.creator.userId}>
+                        {initialActivity.creator.username || 'Responsable actual'}
+                      </option>
+                    )}
                   {usersList.map((u) => (
                     <option key={u.userId} value={u.userId}>
-                      {u.username} ({u.email})
+                      {u.username}
                     </option>
                   ))}
                 </select>

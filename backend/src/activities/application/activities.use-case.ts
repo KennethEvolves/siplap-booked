@@ -92,6 +92,18 @@ export class ActivitiesUseCase {
   async update(userId: string, activityId: string, input: UpdateActivity) {
     const policy = await this.policy(userId);
     this.require(policy.canUpdateAll || policy.has(P.updateOwn));
+    if (input.creatorId !== undefined) {
+      this.require(policy.manages);
+      const current = await this.repository.find(activityId);
+      if (!current) throw new NotFoundException('Actividad no encontrada');
+      if (
+        input.creatorId !== current.creator.userId &&
+        !(await this.repository.activeCreator(input.creatorId))
+      )
+        throw new BadRequestException(
+          'El responsable debe ser un usuario activo existente',
+        );
+    }
     return this.present(
       await this.repository.update(
         activityId,

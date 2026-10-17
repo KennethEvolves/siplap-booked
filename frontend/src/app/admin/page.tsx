@@ -1,8 +1,8 @@
 // src/app/admin/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { signOut } from 'next-auth/react';
 import { removeToken } from '@/lib/api';
@@ -13,17 +13,24 @@ import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
 
 export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50" aria-label="Cargando panel" />}>
+      <AdminPanel />
+    </Suspense>
+  );
+}
+
+function AdminPanel() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get('tab'); // Lee si la URL trae ?tab=profile
+  const router = useRouter();
+  const tabs = ['users', 'roles', 'permissions'] as const;
+  const activeTab = tabs.find((tab) => tab === searchParams.get('tab')) ?? 'users';
 
-  const [activeTab, setActiveTab] = useState('users');
-
-  // 2. Si haces clic en el Sidebar y cambia la URL a ?tab=profile, se activa automáticamente
-  useEffect(() => {
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
+  const selectTab = (tab: (typeof tabs)[number]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`/admin?${params.toString()}`, { scroll: false });
+  };
 
   const handleLogout = async () => {
     removeToken();
@@ -60,7 +67,7 @@ export default function AdminPage() {
           {/* Barra de Pestañas (Botones superiores) */}
           <div className="flex space-x-3 border-b border-slate-200 pb-3 mb-6">
             <button
-              onClick={() => setActiveTab('users')}
+              onClick={() => selectTab('users')}
               className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
                 activeTab === 'users'
                   ? 'bg-blue-600 text-white shadow-blue-500/20'
@@ -71,7 +78,7 @@ export default function AdminPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab('roles')}
+              onClick={() => selectTab('roles')}
               className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
                 activeTab === 'roles'
                   ? 'bg-blue-600 text-white shadow-blue-500/20'
@@ -82,7 +89,7 @@ export default function AdminPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab('permissions')}
+              onClick={() => selectTab('permissions')}
               className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
                 activeTab === 'permissions'
                   ? 'bg-blue-600 text-white shadow-blue-500/20'
@@ -92,16 +99,6 @@ export default function AdminPage() {
               Permisos
             </button>
 
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
-                activeTab === 'profile'
-                  ? 'bg-blue-600 text-white shadow-blue-500/20'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
-              }`}
-            >
-              Mi Perfil
-            </button>
           </div>
 
           {/* Contenido Dinámico: Aquí se renderiza según la pestaña activa */}

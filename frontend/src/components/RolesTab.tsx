@@ -1,10 +1,10 @@
 // src/components/RolesTab.tsx
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
-import { ShieldCheck, UserPlus, Search } from 'lucide-react';
+import { ShieldCheck, Search } from 'lucide-react';
 
 interface RoleItem {
   roleId: string;
@@ -27,10 +27,9 @@ export default function RolesTab() {
   const [success, setSuccess] = useState('');
 
   // Cargar roles desde la base de datos
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
-      setLoading(true);
-      const res: any = await apiFetch('/roles');
+      const res = await apiFetch<RoleItem[] | { roles?: RoleItem[] }>('/roles');
       const rolesList = Array.isArray(res) ? res : res.roles;
       setRoles(rolesList || []);
     } catch (err: unknown) {
@@ -38,11 +37,11 @@ export default function RolesTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchRoles();
-  }, []);
+    void Promise.resolve().then(fetchRoles);
+  }, [fetchRoles]);
 
   const cancelEdit = () => {
     setEditingRole(null);
@@ -69,7 +68,7 @@ export default function RolesTab() {
 
       setSuccess(editingRole ? '¡Rol actualizado con éxito!' : '¡Rol creado con éxito!');
       cancelEdit();
-      fetchRoles();
+      void fetchRoles();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al guardar el rol');
     } finally {
@@ -82,7 +81,7 @@ export default function RolesTab() {
       try {
         await apiFetch(`/roles/${id}`, { method: 'DELETE' });
         if (editingRole === id) cancelEdit();
-        fetchRoles();
+        void fetchRoles();
       } catch (err: unknown) {
         alert(err instanceof Error ? err.message : 'No se pudo eliminar el rol');
       }

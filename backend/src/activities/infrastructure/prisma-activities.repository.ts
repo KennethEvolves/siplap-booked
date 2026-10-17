@@ -65,7 +65,6 @@ function data(input: UpdateActivity) {
     requires_certified: input.requiresCertified,
     requires_authority: input.requiresAuthority,
     objective_id: input.objectiveId,
-    creator_id: input.creatorId !== undefined ? input.creatorId : undefined,
     updated_at: new Date(),
   };
 }
@@ -160,7 +159,16 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
                 'La fecha final no puede ser anterior a la inicial',
               );
             return map(
-              await tx.activities.update({ where, data: data(input), select }),
+              await tx.activities.update({
+                where,
+                data: {
+                  ...data(input),
+                  ...(input.creatorId === undefined
+                    ? {}
+                    : { creator_id: input.creatorId }),
+                },
+                select,
+              }),
             );
           },
           { isolationLevel: 'Serializable' },

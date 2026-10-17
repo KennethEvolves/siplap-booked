@@ -5,7 +5,7 @@ import type { AuthUser } from '../../domain/entities/auth-user.entity.js';
 
 const account: AuthUser = {
   userId: 'test-user', email: 'user@example.test', username: 'Usuario',
-  passwordHash: 'hash', status: 'ACTIVE', roles: [],
+  passwordHash: 'hash', status: 'ACTIVE', roles: [], permissions: [],
 };
 function setup(user: AuthUser | null = account, valid = true) {
   const repository = { findById: vi.fn(), findByEmail: vi.fn().mockResolvedValue(user) };
@@ -21,7 +21,8 @@ describe('login de todas las cuentas activas', () => {
     expect(result.accessToken).toBe('jwt');
     expect(result.user.roles).toEqual(roles);
     expect(result.user).not.toHaveProperty('passwordHash');
-    expect(c.tokens.sign).toHaveBeenCalledWith({ sub: account.userId, email: account.email, roles });
+    expect(c.tokens.sign).toHaveBeenCalledWith({ sub: account.userId, email: account.email, roles, permissions: [] });
+    expect(result.user.permissions).toEqual([]);
   });
   it('rechaza contraseña incorrecta', async () => {
     const c = setup(account, false);

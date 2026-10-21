@@ -233,66 +233,152 @@ export default function ActivitiesPage() {
     return activity.status?.toUpperCase() === filterStatus.toUpperCase();
   });
 
-  const getStatusBadge = (status: BackendActivityStatus) => {
+ const getStatusBadge = (status: BackendActivityStatus) => {
+    const base =
+      'inline-block whitespace-nowrap px-3 py-1 text-xs rounded-full font-semibold border';
     switch (status) {
       case 'approved':
-        return <span className="px-3 py-1 text-xs rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Aprobado</span>;
+        return <span className={`${base} bg-uno-verde text-uno-negro border-uno-olivo`}>Aprobado</span>;
       case 'rejected':
-        return <span className="px-3 py-1 text-xs rounded-full font-semibold bg-rose-50 text-rose-700 border border-rose-200">No Aprobado</span>;
+        return <span className={`${base} bg-uno-terracota/15 text-uno-marron border-uno-terracota/60`}>No Aprobado</span>;
       case 'rescheduled':
-        return <span className="px-3 py-1 text-xs rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200">Reprogramación</span>;
+        return <span className={`${base} bg-uno-oro/30 text-uno-negro border-uno-oro`}>Reprogramación</span>;
       case 'cancelled':
-        return <span className="px-3 py-1 text-xs rounded-full font-semibold bg-slate-100 text-slate-700 border border-slate-200">Cancelado</span>;
+        return <span className={`${base} bg-uno-beige/50 text-uno-negro border-uno-beige`}>Cancelado</span>;
       default:
-        return <span className="px-3 py-1 text-xs rounded-full font-semibold bg-blue-50 text-blue-700 border border-blue-200">Pendiente</span>;
+        return <span className={`${base} bg-uno-mostaza/30 text-uno-negro border-uno-mostaza`}>Pendiente</span>;
     }
   };
 
+  const actionBtn =
+    'cursor-pointer h-9 md:h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all';
+
+  // Los botones se usan en la tabla (escritorio) y en las tarjetas (móvil)
+  const renderActions = (activity: BackendActivity) => {
+    const userCanEditThis = canEditActivity(activity);
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
+        {userCanEditThis && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setEditingActivity(activity);
+              setIsEditModalOpen(true);
+            }}
+            className={`${actionBtn} text-primary border-primary/40 hover:bg-secondary flex items-center gap-1`}
+          >
+            <Pencil className="h-3 w-3" />
+            Editar
+          </Button>
+        )}
+
+        {canApprove && (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleUpdateStatus(activity.activityId, 'approved')}
+              className={`${actionBtn} text-uno-olivo border-uno-olivo/50 hover:bg-uno-verde`}
+            >
+              Aprobar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleUpdateStatus(activity.activityId, 'rejected')}
+              className={`${actionBtn} text-uno-terracota border-uno-terracota/50 hover:bg-uno-terracota/10`}
+            >
+              Rechazar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleUpdateStatus(activity.activityId, 'rescheduled')}
+              className={`${actionBtn} text-uno-marron border-uno-oro hover:bg-uno-oro/20`}
+            >
+              Reprogramar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleUpdateStatus(activity.activityId, 'cancelled')}
+              className={`${actionBtn} text-muted-foreground border-border hover:bg-secondary`}
+            >
+              Cancelar
+            </Button>
+          </>
+        )}
+
+        {!userCanEditThis && !canApprove && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 md:h-8 text-muted-foreground hover:text-foreground rounded-lg text-xs font-medium"
+          >
+            Ver detalles
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-secondary/40">
       <Sidebar />
 
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 min-w-0 p-4 pt-16 md:p-6 md:pt-16 lg:p-8 lg:pt-8 overflow-y-auto">
         {toastMessage && (
-          <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
-            <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium ${
-              toastMessage.type === 'success' 
-                ? 'bg-emerald-600 text-white border-emerald-700' 
-                : 'bg-rose-600 text-white border-rose-700'
-            }`}>
-              {toastMessage.type === 'success' ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+          <div className="fixed top-3 right-3 left-16 sm:left-auto sm:top-6 sm:right-6 z-[60] animate-in fade-in slide-in-from-top-4 duration-200">
+            <div
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium text-white ${
+                toastMessage.type === 'success'
+                  ? 'bg-uno-olivo border-uno-olivo'
+                  : 'bg-uno-terracota border-uno-terracota'
+              }`}
+            >
+              {toastMessage.type === 'success' ? (
+                <Check className="h-4 w-4 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+              )}
               {toastMessage.text}
             </div>
           </div>
         )}
 
-        <div className="max-w-6xl mx-auto space-y-6">
-          
-          {/* Encabezado adaptativo basado en el alcance del RBAC */}
-          <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Gestión de Actividades</h1>
+        <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
+
+          {/* Encabezado */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-4 md:p-6 rounded-2xl border border-border shadow-sm">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground">
+                  Gestión de Actividades
+                </h1>
                 {isSuperUser && (
-                  <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                  <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-uno-negro bg-uno-mostaza/30 px-2 py-0.5 rounded-md border border-uno-mostaza">
                     <ShieldCheck className="h-3 w-3" />
                     Acceso Total
                   </span>
                 )}
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 Panel institucional configurado según tu rol activo ({roleScope}).
               </p>
             </div>
-            
+
             {canCreate && (
               <ActivityModal userRole={roleScope} onSave={handleSaveActivity} />
             )}
           </div>
 
-          {/* Filtros de Estado */}
-          <div className="flex items-center gap-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Filtrar estado:</span>
+          {/* Filtros de estado: scroll horizontal en pantallas chicas */}
+          <div className="flex items-center gap-2 bg-card p-3 md:p-4 rounded-2xl border border-border shadow-sm overflow-x-auto">
+            <span className="shrink-0 text-xs font-bold text-muted-foreground uppercase tracking-wider mr-2">
+              Filtrar estado:
+            </span>
             {[
               { key: 'TODOS', label: 'TODOS' },
               { key: 'PENDING', label: 'PENDIENTE' },
@@ -306,10 +392,10 @@ export default function ActivitiesPage() {
                 size="sm"
                 variant={filterStatus === st.key ? 'default' : 'outline'}
                 onClick={() => setFilterStatus(st.key)}
-                className={`rounded-xl text-xs font-semibold ${
-                  filterStatus === st.key 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                    : 'text-slate-600 border-slate-200'
+                className={`shrink-0 whitespace-nowrap min-h-[36px] rounded-xl text-xs font-semibold ${
+                  filterStatus === st.key
+                    ? 'bg-primary hover:bg-uno-ciruela text-primary-foreground'
+                    : 'text-foreground border-border hover:bg-secondary'
                 }`}
               >
                 {st.label}
@@ -317,117 +403,85 @@ export default function ActivitiesPage() {
             ))}
           </div>
 
-          {/* Tabla de Actividades */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Actividades */}
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
             {loading ? (
-              <div className="flex flex-col items-center justify-center p-12 gap-3 text-slate-500">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <div className="flex flex-col items-center justify-center p-12 gap-3 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <p className="text-sm">Cargando actividades del servidor...</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader className="bg-slate-50/70">
-                  <TableRow>
-                    <TableHead className="font-bold text-slate-700">Título</TableHead>
-                    <TableHead className="font-bold text-slate-700">Creado por</TableHead>
-                    <TableHead className="font-bold text-slate-700">Estatus</TableHead>
-                    <TableHead className="text-right font-bold text-slate-700">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredActivities.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-slate-400 text-sm">
-                        No hay actividades registradas para mostrar.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredActivities.map((activity) => {
-                      const userCanEditThis = canEditActivity(activity);
-
-                      return (
-                        <TableRow key={activity.activityId} className="hover:bg-slate-50/50 transition-colors">
-                          <TableCell className="font-semibold text-slate-900">{activity.title || 'Sin título'}</TableCell>
-                          <TableCell className="text-slate-600 text-sm">
-                            {activity.creator?.username || activity.creator?.userId || 'Desconocido'}
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(activity.status)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end items-center gap-1.5">
-                              {/* Botón de Editar dinámico (según permiso update_all o update_own si es autor) */}
-                              {userCanEditThis && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setEditingActivity(activity);
-                                    setIsEditModalOpen(true);
-                                  }}
-                                  className="cursor-pointer text-blue-600 border-blue-200 hover:bg-blue-50 h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all flex items-center gap-1"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                  Editar
-                                </Button>
-                              )}
-
-                              {/* Botones de dictamen de aprobación si cuenta con permiso canApprove */}
-                              {canApprove && (
-                                <>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => handleUpdateStatus(activity.activityId, 'approved')}
-                                    className="cursor-pointer text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all"
-                                  >
-                                    Aprobar
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => handleUpdateStatus(activity.activityId, 'rejected')}
-                                    className="cursor-pointer text-rose-600 border-rose-200 hover:bg-rose-50 h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all"
-                                  >
-                                    Rechazar
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => handleUpdateStatus(activity.activityId, 'rescheduled')}
-                                    className="cursor-pointer text-amber-600 border-amber-200 hover:bg-amber-50 h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all"
-                                  >
-                                    Reprogramar
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => handleUpdateStatus(activity.activityId, 'cancelled')}
-                                    className="cursor-pointer text-slate-600 border-slate-200 hover:bg-slate-100 h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all"
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </>
-                              )}
-
-                              {/* Si no puede editar ni dictaminar, se ofrece botón informativo */}
-                              {!userCanEditThis && !canApprove && (
-                                <Button size="sm" variant="ghost" className="text-slate-600 hover:text-slate-900 rounded-lg text-xs font-medium">
-                                  Ver detalles
-                                </Button>
-                              )}
-                            </div>
+              <>
+                {/* Escritorio y tablet horizontal: tabla */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader className="bg-secondary/70">
+                      <TableRow>
+                        <TableHead className="font-bold text-foreground">Título</TableHead>
+                        <TableHead className="font-bold text-foreground">Creado por</TableHead>
+                        <TableHead className="font-bold text-foreground">Estatus</TableHead>
+                        <TableHead className="text-right font-bold text-foreground">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredActivities.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
+                            No hay actividades registradas para mostrar.
                           </TableCell>
                         </TableRow>
-                      );
-                    })
+                      ) : (
+                        filteredActivities.map((activity) => (
+                          <TableRow
+                            key={activity.activityId}
+                            className="hover:bg-secondary/50 transition-colors"
+                          >
+                            <TableCell className="font-semibold text-foreground">
+                              {activity.title || 'Sin título'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {activity.creator?.username || activity.creator?.userId || 'Desconocido'}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(activity.status)}</TableCell>
+                            <TableCell className="text-right">{renderActions(activity)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Móvil: tarjetas apiladas */}
+                <div className="md:hidden divide-y divide-border">
+                  {filteredActivities.length === 0 ? (
+                    <p className="text-center py-8 px-4 text-muted-foreground text-sm">
+                      No hay actividades registradas para mostrar.
+                    </p>
+                  ) : (
+                    filteredActivities.map((activity) => (
+                      <div key={activity.activityId} className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="min-w-0 font-semibold text-foreground break-words">
+                            {activity.title || 'Sin título'}
+                          </h3>
+                          <div className="shrink-0">{getStatusBadge(activity.status)}</div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Creado por:{' '}
+                          <span className="text-foreground">
+                            {activity.creator?.username || activity.creator?.userId || 'Desconocido'}
+                          </span>
+                        </p>
+                        {renderActions(activity)}
+                      </div>
+                    ))
                   )}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </div>
 
-          {/* Modal para Edición */}
+          {/* Modal para edición */}
           {editingActivity && (
             <ActivityModal
               userRole={roleScope}

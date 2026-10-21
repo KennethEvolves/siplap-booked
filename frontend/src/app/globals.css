@@ -46,43 +46,61 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* === Paleta oficial Manual de Identidad UNO 2026 === */
+  --color-uno-rojo: #94251e;
+  --color-uno-negro: #1e1e1e;
+  --color-uno-ciruela: #5b171a;
+  --color-uno-terracota: #b94a44;
+  --color-uno-marron: #733732;
+  --color-uno-rosa: #d77a72;
+  --color-uno-marfil: #dfd8d0;
+  --color-uno-oro: #c4a366;
+  --color-uno-mostaza: #f0ba3f;
+  --color-uno-olivo: #64826f;
+  --color-uno-beige: #c6c4ae;
+  --color-uno-verde: #d2e2d8;
+  --color-uno-papel: #f1ecde;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --background: #ffffff;
+  --foreground: #1e1e1e;
+  --card: #ffffff;
+  --card-foreground: #1e1e1e;
+  --popover: #ffffff;
+  --popover-foreground: #1e1e1e;
+  --primary: #94251e;              /* Rojo UNO */
+  --primary-foreground: #ffffff;
+  --secondary: #f1ecde;            /* Papel */
+  --secondary-foreground: #1e1e1e;
+  --muted: #f1ecde;                /* Papel */
+  --muted-foreground: #6b6560;
+  --accent: #f1ecde;               /* hover de menús y filas */
+  --accent-foreground: #94251e;
+  --destructive: #b94a44;          /* Terracota */
+  --border: #dfd8d0;               /* Marfil */
+  --input: #dfd8d0;
+  --ring: #94251e;
+  --chart-1: #94251e;
+  --chart-2: #c4a366;
+  --chart-3: #64826f;
+  --chart-4: #b94a44;
+  --chart-5: #f0ba3f;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #94251e;              /* Sidebar en Rojo UNO */
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #5b171a;      /* Ciruela */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #5b171a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.2);
+  --sidebar-ring: #f1ecde;
+
+  --uno-gradient: linear-gradient(135deg, #94251e, #5b171a);
 }
 
+/* El modo oscuro no está en el manual de identidad. Lo dejo igual que lo tenías. */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

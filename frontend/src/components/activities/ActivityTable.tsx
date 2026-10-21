@@ -2,13 +2,13 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/Button';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 
 interface ActivityTableProps {
@@ -22,9 +22,9 @@ export default function ActivityTable({ activities, userRole, onActionClick }: A
   const isLead = userRole === 'lead';
 
   return (
-    <div className="border rounded-md bg-white shadow-sm overflow-hidden">
+    <div className="border border-border rounded-md bg-card shadow-sm overflow-x-auto">
       <Table>
-        <TableHeader>
+        <TableHeader className="bg-secondary/70">
           <TableRow>
             <TableHead>Título</TableHead>
             <TableHead>Responsable</TableHead>
@@ -38,20 +38,18 @@ export default function ActivityTable({ activities, userRole, onActionClick }: A
               <TableCell className="font-medium">{activity.title}</TableCell>
               <TableCell>{activity.owner}</TableCell>
               <TableCell>
-                <span className="px-2 py-1 text-xs rounded-full bg-blue-50 text-blue-700 font-medium">
+                <span className="px-2 py-1 text-xs rounded-full bg-secondary text-primary font-medium">
                   {activity.status}
                 </span>
               </TableCell>
               <TableCell className="text-right">
-                {/* REQUISITO: La directiva gestiona los estados de aprobación */}
                 {isDirective ? (
-                  <div className="flex justify-end gap-1">
-                    <Button size="sm" variant="outline" onClick={() => onActionClick('aprobar', activity.id)} className="text-green-600 h-8 px-2 text-xs">Aprobar</Button>
-                    <Button size="sm" variant="outline" onClick={() => onActionClick('rechazar', activity.id)} className="text-red-600 h-8 px-2 text-xs">No aprobado</Button>
-                    <Button size="sm" variant="outline" onClick={() => onActionClick('reprogramar', activity.id)} className="text-amber-600 h-8 px-2 text-xs">Reprogramar</Button>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    <Button size="sm" variant="outline" onClick={() => onActionClick('aprobar', activity.id)} className="text-uno-olivo h-8 px-2 text-xs">Aprobar</Button>
+                    <Button size="sm" variant="outline" onClick={() => onActionClick('rechazar', activity.id)} className="text-uno-terracota h-8 px-2 text-xs">No aprobado</Button>
+                    <Button size="sm" variant="outline" onClick={() => onActionClick('reprogramar', activity.id)} className="text-uno-marron h-8 px-2 text-xs">Reprogramar</Button>
                   </div>
                 ) : isLead ? (
-                  /* REQUISITO: Vista limpia para el lead (solo sus propias actividades sin botones de aprobación) */
                   <Button size="sm" variant="ghost" onClick={() => onActionClick('ver', activity.id)}>
                     Ver detalles
                   </Button>

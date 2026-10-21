@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard,
   Users,
@@ -21,26 +22,47 @@ import {
   User,
 } from 'lucide-react';
 
+// Definimos los roles que tienen permiso de administrar todo
+const ADMIN_ROLES = ['superuser', 'reservation_manager'];
+
 const MENU_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Mi Perfil', href: '/perfil', icon: User },
-  { name: 'Usuarios y Roles', href: '/admin', icon: Users },
+  { 
+    name: 'Usuarios y Roles', 
+    href: '/admin', 
+    icon: Users,
+    roles: ADMIN_ROLES // Solo superuser y reservation_manager
+  },
   { name: 'Actividades', href: '/activities', icon: CalendarCheck },
-  { name: 'Espacios', href: '/spaces', icon: MapPin },
-  { name: 'Recursos', href: '/resources', icon: Box },
-  { name: 'Reservaciones', href: '/reservations', icon: Clock },
+  { 
+    name: 'Espacios', 
+    href: '/spaces', 
+    icon: MapPin,
+    roles: ADMIN_ROLES // Oculto para directive, lead, teacher, personal
+  },
+  { 
+    name: 'Recursos', 
+    href: '/resources', 
+    icon: Box,
+    roles: ADMIN_ROLES // Oculto para directive, lead, teacher, personal
+  },
+  { name: 'Reservaciones', href: '/reservations', icon: Clock }, // Visible para todos
   { name: 'Reportes', href: '/reports', icon: FileText },
 ];
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false); // solo aplica en escritorio
-  const [mobileOpen, setMobileOpen] = useState(false); // solo aplica en móvil/tablet
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+
+  // Obtenemos el rol del usuario autenticado
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
 
   const isActive = (path: string) =>
     pathname === path || pathname?.startsWith(`${path}/`);
 
-  // En escritorio, al colapsar se ocultan las etiquetas. En móvil siempre se ven.
   const hideLabel = collapsed ? 'lg:hidden' : '';
 
   const linkClass = (active: boolean) =>
@@ -51,6 +73,12 @@ export function Sidebar() {
         ? 'bg-white text-primary font-semibold shadow-sm'
         : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
     }`;
+
+  // Filtramos los items: si no especifica roles es público, si especifica roles verificamos coincidencia
+  const filteredMenuItems = MENU_ITEMS.filter((item) => {
+    if (!item.roles) return true;
+    return userRole && item.roles.includes(userRole);
+  });
 
   return (
     <>
@@ -90,13 +118,13 @@ export function Sidebar() {
           >
             <div className={`flex flex-col gap-1.5 overflow-hidden ${hideLabel}`}>
               <Image
-               src="/logo-uno-blanco.png"
-               alt="Universidad de Oriente, Valladolid, Yucatán"
-               width={150}
-               height={62}
-               priority
-               className="h-auto w-[150px] brightness-0 invert"
-               />
+                src="/logo-uno-blanco.png"
+                alt="Universidad de Oriente, Valladolid, Yucatán"
+                width={150}
+                height={62}
+                priority
+                className="h-auto w-[150px] brightness-0 invert"
+              />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/70">
                 SIPLAP · Gestión Institucional
               </span>
@@ -125,9 +153,9 @@ export function Sidebar() {
             </button>
           </div>
 
-          {/* Módulos */}
+          {/* Módulos filtrados según el rol */}
           <nav className="space-y-1.5">
-            {MENU_ITEMS.map((item) => {
+            {filteredMenuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link

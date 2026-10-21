@@ -2,20 +2,23 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Users,  // <--- Importamos el ícono de perfil
-  CalendarCheck, 
-  MapPin, 
-  Box, 
-  Clock, 
-  FileText, 
-  HelpCircle, 
+import {
+  LayoutDashboard,
+  Users,
+  CalendarCheck,
+  MapPin,
+  Box,
+  Clock,
+  FileText,
+  HelpCircle,
   Info,
   ChevronLeft,
   ChevronRight,
-  User
+  Menu,
+  X,
+  User,
 } from 'lucide-react';
 
 const MENU_ITEMS = [
@@ -30,99 +33,141 @@ const MENU_ITEMS = [
 ];
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); // solo aplica en escritorio
+  const [mobileOpen, setMobileOpen] = useState(false); // solo aplica en móvil/tablet
   const pathname = usePathname();
 
-  const isActive = (path: string) => pathname === path || pathname?.startsWith(`${path}/`);
+  const isActive = (path: string) =>
+    pathname === path || pathname?.startsWith(`${path}/`);
+
+  // En escritorio, al colapsar se ocultan las etiquetas. En móvil siempre se ven.
+  const hideLabel = collapsed ? 'lg:hidden' : '';
+
+  const linkClass = (active: boolean) =>
+    `flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all min-h-[44px] ${
+      collapsed ? 'lg:justify-center lg:px-0' : ''
+    } ${
+      active
+        ? 'bg-white text-primary font-semibold shadow-sm'
+        : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+    }`;
 
   return (
-    <aside 
-      className={`relative bg-slate-100 text-slate-700 flex flex-col justify-between h-screen border-r border-slate-200 p-3 transition-all duration-300 ease-in-out select-none shadow-sm sticky top-0 ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
-    >
-      <div>
-        {/* Logo / Encabezado del Sistema */}
-        <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-2 py-4 mb-4`}>
-          {!collapsed && (
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="h-9 w-9 min-w-[36px] rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-black text-sm">
-                S
-              </div>
-              <div className="flex flex-col">
-                <span className="text-base font-extrabold tracking-tight text-slate-900 truncate leading-none">
-                  SIPLAP
-                </span>
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">
-                  Gestión Institucional
-                </span>
-              </div>
-            </div>
-          )}
+    <>
+      {/* Botón hamburguesa: solo en móvil y tablet */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed top-3 left-3 z-40 h-11 w-11 flex items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md"
+        aria-label="Abrir menú"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
 
-          {/* Alternar tamaño */}
-          <button 
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-xl hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors flex items-center justify-center"
-            title={collapsed ? "Expandir menú" : "Minimizar menú"}
+      {/* Fondo oscuro detrás del menú en móvil */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/50"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`bg-sidebar text-sidebar-foreground flex flex-col justify-between
+          h-screen p-3 select-none shadow-lg
+          fixed inset-y-0 left-0 z-50 w-64
+          transition-all duration-300 ease-in-out
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 lg:sticky lg:top-0 lg:z-auto
+          ${collapsed ? 'lg:w-20' : 'lg:w-64'}`}
+      >
+        <div>
+          {/* Encabezado: logo oficial */}
+          <div
+            className={`flex items-center justify-between px-2 py-4 mb-4 ${
+              collapsed ? 'lg:justify-center' : ''
+            }`}
           >
-            {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-          </button>
+            <div className={`flex flex-col gap-1.5 overflow-hidden ${hideLabel}`}>
+              <Image
+               src="/logo-uno-blanco.png"
+               alt="Universidad de Oriente, Valladolid, Yucatán"
+               width={150}
+               height={62}
+               priority
+               className="h-auto w-[150px] brightness-0 invert"
+               />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/70">
+                SIPLAP · Gestión Institucional
+              </span>
+            </div>
+
+            {/* Colapsar/expandir: solo escritorio */}
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden lg:flex p-2 rounded-xl hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors items-center justify-center"
+              title={collapsed ? 'Expandir menú' : 'Minimizar menú'}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-5 w-5" />
+              ) : (
+                <ChevronLeft className="h-5 w-5" />
+              )}
+            </button>
+
+            {/* Cerrar: solo móvil */}
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="lg:hidden p-2 rounded-xl hover:bg-sidebar-accent text-sidebar-foreground"
+              aria-label="Cerrar menú"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Módulos */}
+          <nav className="space-y-1.5">
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={linkClass(isActive(item.href))}
+                  title={item.name}
+                >
+                  <Icon className="h-4 w-4 min-w-[16px]" />
+                  <span className={`truncate ${hideLabel}`}>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Módulos Institucionales */}
-        <nav className="space-y-1.5">
-          {MENU_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
+        {/* Soporte */}
+        <div className="space-y-1.5 pt-4 border-t border-sidebar-border">
+          <Link
+            href="/ayuda"
+            onClick={() => setMobileOpen(false)}
+            className={linkClass(isActive('/ayuda'))}
+            title="Ayuda"
+          >
+            <HelpCircle className="h-4 w-4 min-w-[16px]" />
+            <span className={`truncate ${hideLabel}`}>Ayuda</span>
+          </Link>
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm ${
-                  active
-                    ? 'bg-white text-blue-600 font-semibold shadow-slate-200 border border-slate-200/60'
-                    : 'hover:bg-white/60 text-slate-600 hover:text-slate-900'
-                }`}
-                title={item.name}
-              >
-                <Icon className="h-4 w-4 min-w-[16px]" />
-                {!collapsed && <span className="truncate">{item.name}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Soporte */}
-      <div className="space-y-1.5 pt-4 border-t border-slate-200/80">
-        <Link
-          href="/ayuda"
-          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
-            isActive('/ayuda')
-              ? 'bg-white text-blue-600 font-semibold shadow-sm'
-              : 'hover:bg-white/50 text-slate-600 hover:text-slate-900'
-          }`}
-          title="Ayuda"
-        >
-          <HelpCircle className="h-4 w-4 min-w-[16px]" />
-          {!collapsed && <span className="truncate">Ayuda</span>}
-        </Link>
-
-        <Link
-          href="/informacion"
-          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
-            isActive('/informacion')
-              ? 'bg-white text-blue-600 font-semibold shadow-sm'
-              : 'hover:bg-white/50 text-slate-600 hover:text-slate-900'
-          }`}
-          title="Información"
-        >
-          <Info className="h-4 w-4 min-w-[16px]" />
-          {!collapsed && <span className="truncate">Información</span>}
-        </Link>
-      </div>
-    </aside>
+          <Link
+            href="/informacion"
+            onClick={() => setMobileOpen(false)}
+            className={linkClass(isActive('/informacion'))}
+            title="Información"
+          >
+            <Info className="h-4 w-4 min-w-[16px]" />
+            <span className={`truncate ${hideLabel}`}>Información</span>
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 }

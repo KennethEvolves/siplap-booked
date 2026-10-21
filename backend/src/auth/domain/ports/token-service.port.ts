@@ -2,6 +2,7 @@ export interface AuthTokenPayload {
   sub: string;
   email: string;
   roles: string[];
+  permissions: string[];
 }
 
 export abstract class TokenServicePort {

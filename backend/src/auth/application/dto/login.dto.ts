@@ -11,5 +11,6 @@ export interface LoginResultDto {
     username: string | null;
     email: string;
     roles: string[];
+    permissions: string[];
   };
 }

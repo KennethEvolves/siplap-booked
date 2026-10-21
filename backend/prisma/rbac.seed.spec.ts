@@ -1,222 +1,216 @@
 import { describe, expect, it } from 'vitest';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
-import { BASE_PERMISSIONS, seedRbac } from './rbac.seed.js';
+import {
+  BASE_PERMISSIONS,
+  FULL_PERMISSIONS_CATALOG,
+  seedRbac,
+} from './rbac.seed.js';
 
-// In-memory database boundary: exercise seed behavior without touching local data.
 function database() {
   type Permission = {
     permission_id: string;
     slug: string;
-    name?: string;
-    description?: string;
+    name?: string | null;
+    description?: string | null;
   };
-  type Role = { role_id: string; name: string; description?: string };
-  type Link = {
+  type Role = {
     role_id: string;
-    permission_id: string;
-    created_at?: Date | null;
-    updated_at?: Date | null;
+    name: string | null;
+    description?: string | null;
   };
+  type Link = { role_id: string; permission_id: string };
   const roles: Role[] = [];
   const permissions: Permission[] = [];
-  let links: Link[] = [];
+  const links: Link[] = [];
   let sequence = 0;
-  const tx = {
+
+  const prisma = {
     roles: {
-      upsert: ({
-        where,
-        create,
-      }: {
-        where: { name: string };
-        create: Omit<Role, 'role_id'>;
-      }) => {
-        let role = roles.find((item) => item.name === where.name);
-        if (!role) {
-          role = { ...create, role_id: `role-${++sequence}` };
-          roles.push(role);
-        }
+      findFirst: async ({ where }: { where: { name: string } }) =>
+        roles.find((role) => role.name === where.name) ?? null,
+      create: async ({ data }: { data: Omit<Role, 'role_id'> }) => {
+        const role = { ...data, role_id: `role-${++sequence}` };
+        roles.push(role);
         return role;
       },
     },
     permissions: {
-      findUnique: ({ where }: { where: { slug: string } }) =>
-        permissions.find((item) => item.slug === where.slug) ?? null,
-      upsert: ({
-        where,
-        create,
-      }: {
-        where: { slug: string };
-        create: Omit<Permission, 'permission_id'>;
-      }) => {
-        let permission = permissions.find((item) => item.slug === where.slug);
-        if (!permission) {
-          permission = { ...create, permission_id: `permission-${++sequence}` };
-          permissions.push(permission);
-        }
+      findFirst: async ({ where }: { where: { slug: string } }) =>
+        permissions.find((permission) => permission.slug === where.slug) ?? null,
+      create: async ({ data }: { data: Omit<Permission, 'permission_id'> }) => {
+        const permission = { ...data, permission_id: `permission-${++sequence}` };
+        permissions.push(permission);
         return permission;
       },
-      update: ({
+      update: async ({
         where,
         data,
       }: {
         where: { permission_id: string };
-        data: { slug: string };
+        data: { name?: string; description?: string };
       }) => {
         const permission = permissions.find(
           (item) => item.permission_id === where.permission_id,
         )!;
-        permission.slug = data.slug;
+        Object.assign(permission, data);
         return permission;
       },
-      delete: ({ where }: { where: { permission_id: string } }) => {
-        permissions.splice(
-          permissions.findIndex(
-            (item) => item.permission_id === where.permission_id,
-          ),
-          1,
+      delete: async ({ where }: { where: { permission_id: string } }) => {
+        const index = permissions.findIndex(
+          (permission) => permission.permission_id === where.permission_id,
         );
+        if (index >= 0) permissions.splice(index, 1);
       },
     },
     role_permissions: {
-      findMany: ({ where }: { where: { permission_id: string } }) =>
-        links.filter((item) => item.permission_id === where.permission_id),
-      upsert: ({ create }: { create: Link }) => {
-        if (
-          !links.some(
-            (item) =>
-              item.role_id === create.role_id &&
-              item.permission_id === create.permission_id,
-          )
-        )
-          links.push(create);
+      findMany: async ({
+        where,
+      }: {
+        where: { permission_id: string };
+        select: { role_id: true };
+      }) =>
+        links
+          .filter((link) => link.permission_id === where.permission_id)
+          .map(({ role_id }) => ({ role_id })),
+      findFirst: async ({
+        where,
+      }: {
+        where: { role_id: string; permission_id: string };
+      }) =>
+        links.find(
+          (link) =>
+            link.role_id === where.role_id &&
+            link.permission_id === where.permission_id,
+        ) ?? null,
+      create: async ({ data }: { data: Link }) => {
+        links.push(data);
+        return data;
       },
-      deleteMany: ({ where }: { where: { permission_id: string } }) => {
-        links = links.filter(
-          (item) => item.permission_id !== where.permission_id,
-        );
+      deleteMany: async ({ where }: { where: { permission_id: string } }) => {
+        for (let index = links.length - 1; index >= 0; index -= 1) {
+          if (links[index]?.permission_id === where.permission_id)
+            links.splice(index, 1);
+        }
       },
-    },
-  };
-  const prisma = {
-    $transaction: async (
-      operation: (client: typeof tx) => Promise<unknown>,
-    ) => {
-      const snapshot = structuredClone({ roles, permissions, links });
-      try {
-        return await operation(tx);
-      } catch (error) {
-        roles.splice(0, roles.length, ...snapshot.roles);
-        permissions.splice(0, permissions.length, ...snapshot.permissions);
-        links = snapshot.links;
-        throw error;
-      }
     },
   } as unknown as PrismaClient;
-  return {
-    prisma,
-    roles,
-    permissions,
-    get links() {
-      return links;
-    },
-  };
+
+  return { prisma, roles, permissions, links };
 }
 
-describe('RBAC-05 seed', () => {
-  it('creates exactly the base catalog, links it to SUPERUSUARIO and is idempotent', async () => {
+describe('RBAC seed', () => {
+  it('creates and links the full catalog to SUPERUSUARIO idempotently', async () => {
     const db = database();
     db.roles.push({ role_id: 'reader', name: 'LECTOR' });
-    await seedRbac(db.prisma);
-    expect(db.permissions.map((p) => p.slug).sort()).toEqual([
-      'activities:create',
-      'activities:delete',
-      'activities:read',
-      'activities:update',
-      'manage:all',
-      'users:create',
-      'users:delete',
-      'users:read',
-      'users:update',
+    db.roles.push({ role_id: 'directive', name: 'DIRECTIVO' });
+    db.roles.push({ role_id: 'lead', name: 'JEFE DE DEPARTAMENTO' });
+    db.roles.push({ role_id: 'teacher', name: 'DOCENTE' });
+    db.roles.push({ role_id: 'personal', name: 'PERSONAL' });
+
+    const result = await seedRbac(db.prisma);
+    const superuser = db.roles.find((role) => role.name === 'SUPERUSUARIO')!;
+    const reservationManager = db.roles.find(
+      (role) => role.name === 'RESERVATION_MANAGER',
+    )!;
+    expect(result.permissions).toEqual(
+      FULL_PERMISSIONS_CATALOG.map(({ slug }) => slug),
+    );
+    expect(db.permissions.map(({ slug }) => slug).sort()).toEqual(
+      [...FULL_PERMISSIONS_CATALOG.map(({ slug }) => slug)].sort(),
+    );
+    const ownPermissionSlugs = [
+      'reservation:view_all',
+      'reservation:create_own',
+      'reservation:view_own',
+      'reservation:update_own',
+      'reservation:delete_own',
+    ];
+    expect(db.links).toHaveLength(
+      FULL_PERMISSIONS_CATALOG.length + 1 + ownPermissionSlugs.length * 4,
+    );
+    expect(
+      db.links.filter((link) => link.role_id === superuser.role_id),
+    ).toHaveLength(FULL_PERMISSIONS_CATALOG.length);
+    expect(
+      db.links.filter((link) => link.role_id === reservationManager.role_id),
+    ).toEqual([
+      {
+        role_id: reservationManager.role_id,
+        permission_id: db.permissions.find(
+          ({ slug }) => slug === 'reservation:manage',
+        )?.permission_id,
+      },
     ]);
-    const superuser = db.roles.find((r) => r.name === 'SUPERUSUARIO')!;
-    expect(db.links).toHaveLength(9);
-    expect(db.links.every((link) => link.role_id === superuser.role_id)).toBe(
+    for (const roleId of ['directive', 'lead', 'teacher', 'personal']) {
+      const assignments = db.links.filter((link) => link.role_id === roleId);
+      expect(assignments).toHaveLength(ownPermissionSlugs.length);
+      for (const slug of ownPermissionSlugs) {
+        const permission = db.permissions.find((item) => item.slug === slug)!;
+        expect(assignments).toContainEqual({
+          role_id: roleId,
+          permission_id: permission.permission_id,
+        });
+      }
+    }
+    expect(BASE_PERMISSIONS.every((slug) => result.permissions.includes(slug))).toBe(
       true,
     );
+
     const before = structuredClone({
       roles: db.roles,
       permissions: db.permissions,
       links: db.links,
     });
     await seedRbac(db.prisma);
-    expect({
-      roles: db.roles,
-      permissions: db.permissions,
-      links: db.links,
-    }).toEqual(before);
+    expect({ roles: db.roles, permissions: db.permissions, links: db.links }).toEqual(
+      before,
+    );
   });
 
-  it('renames equivalent dotted permissions without replacing their IDs or existing role links', async () => {
+  it('removes obsolete plural activity permissions and their assignments', async () => {
     const db = database();
-    db.roles.push({ role_id: 'coordinator', name: 'COORDINADOR' });
-    db.permissions.push({
-      permission_id: 'legacy',
-      slug: 'activities.read',
-      description: 'Custom description',
-    });
-    db.links.push({ role_id: 'coordinator', permission_id: 'legacy' });
+    db.roles.push({ role_id: 'lead', name: 'JEFE DE DEPARTAMENTO' });
+    db.permissions.push({ permission_id: 'old', slug: 'activities:update' });
+    db.links.push({ role_id: 'lead', permission_id: 'old' });
+
     await seedRbac(db.prisma);
-    expect(
-      db.permissions.find((p) => p.permission_id === 'legacy'),
-    ).toMatchObject({
-      slug: 'activities:read',
-      description: 'Custom description',
-    });
-    expect(db.links.filter((link) => link.role_id === 'coordinator')).toEqual([
-      { role_id: 'coordinator', permission_id: 'legacy' },
-    ]);
+
+    expect(db.permissions.some(({ slug }) => slug === 'activities:update')).toBe(
+      false,
+    );
+    expect(db.links.some(({ permission_id }) => permission_id === 'old')).toBe(
+      false,
+    );
   });
 
-  it('merges dotted aliases into existing canonical permissions without losing or duplicating assignments', async () => {
+  it('migra permisos plurales de reservaciones conservando su alcance por rol', async () => {
     const db = database();
-    db.roles.push(
-      { role_id: 'reader', name: 'LECTOR' },
-      { role_id: 'coordinator', name: 'COORDINADOR' },
-    );
-    db.permissions.push(
-      { permission_id: 'legacy', slug: 'users.read' },
-      { permission_id: 'canonical', slug: 'users:read', name: 'Custom name' },
-      { permission_id: 'unrelated', slug: 'spaces:read' },
-    );
+    db.roles.push({ role_id: 'directive', name: 'DIRECTIVE' });
+    db.permissions.push({ permission_id: 'old-create', slug: 'reservations:create' });
+    db.permissions.push({ permission_id: 'old-read', slug: 'reservations:read' });
     db.links.push(
-      { role_id: 'reader', permission_id: 'legacy' },
-      { role_id: 'reader', permission_id: 'canonical' },
-      { role_id: 'coordinator', permission_id: 'legacy' },
-      { role_id: 'coordinator', permission_id: 'unrelated' },
+      { role_id: 'directive', permission_id: 'old-create' },
+      { role_id: 'directive', permission_id: 'old-read' },
     );
+
     await seedRbac(db.prisma);
-    expect(
-      db.permissions.find((p) => p.permission_id === 'legacy'),
-    ).toBeUndefined();
-    expect(
-      db.permissions.find((p) => p.permission_id === 'canonical')?.name,
-    ).toBe('Custom name');
-    expect(db.links.filter((link) => link.role_id === 'reader')).toEqual([
-      { role_id: 'reader', permission_id: 'canonical' },
-    ]);
-    expect(
-      db.links.filter((link) => link.role_id === 'coordinator'),
-    ).toHaveLength(2);
+
+    expect(db.permissions.some(({ slug }) => slug.startsWith('reservations:'))).toBe(
+      false,
+    );
+    const createPermission = db.permissions.find(
+      ({ slug }) => slug === 'reservation:create_own',
+    )!;
+    const viewPermission = db.permissions.find(
+      ({ slug }) => slug === 'reservation:view_all',
+    )!;
     expect(db.links).toContainEqual({
-      role_id: 'coordinator',
-      permission_id: 'unrelated',
+      role_id: 'directive',
+      permission_id: createPermission.permission_id,
     });
-    expect(
-      db.links.some(
-        (link) =>
-          link.role_id === 'coordinator' && link.permission_id === 'canonical',
-      ),
-    ).toBe(true);
-    expect(db.permissions).toHaveLength(BASE_PERMISSIONS.length + 1);
+    expect(db.links).toContainEqual({
+      role_id: 'directive',
+      permission_id: viewPermission.permission_id,
+    });
   });
 });

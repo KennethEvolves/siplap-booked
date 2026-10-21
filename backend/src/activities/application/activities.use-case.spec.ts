@@ -57,9 +57,19 @@ describe('Permisos de actividades', () => {
       canDelete: true,
     });
   });
+  it('manage:all también concede control total sobre actividades', () => {
+    const policy = new ActivityPolicy('admin', ['manage:all']);
+    expect(policy.canCreate).toBe(true);
+    expect(policy.actions('other')).toEqual({
+      canView: true,
+      canUpdate: true,
+      canApprove: true,
+      canDelete: true,
+    });
+  });
   it('permisos antiguos no conceden acceso implícito', () => {
     expect(
-      new ActivityPolicy('user', ['activities:create', 'manage:all']).canCreate,
+      new ActivityPolicy('user', ['activities:create']).canCreate,
     ).toBe(false);
   });
   it('rechaza asignar otro creador antes de escribir para create_own', async () => {
@@ -94,7 +104,7 @@ describe('Permisos de actividades', () => {
       useCase.list('lead', { page: 1, limit: 20 }),
     ).rejects.toMatchObject({ status: 403 });
   });
-  it('valida fechas, rechaza aprobación/creador por el PATCH normal y enum desconocido', () => {
+  it('valida fechas, permite que PATCH valide creatorId y rechaza campos desconocidos', () => {
     const body = {
       title: 'Actividad',
       startDate: '2026-10-20',
@@ -112,12 +122,56 @@ describe('Permisos de actividades', () => {
     expect(updateActivitySchema.safeParse({ status: 'approved' }).success).toBe(
       false,
     );
-    expect(updateActivitySchema.safeParse({ creatorId: 'other' }).success).toBe(
-      false,
-    );
+    expect(
+      updateActivitySchema.safeParse({
+        creatorId: '550e8400-e29b-41d4-a716-446655440000',
+      }).success,
+    ).toBe(true);
     expect(updateActivitySchema.safeParse({}).success).toBe(false);
     expect(approveActivitySchema.safeParse({ status: 'pending' }).success).toBe(
       false,
     );
+  });
+
+  it('solo SUPERUSUARIO puede reasignar una actividad y valida al nuevo responsable', async () => {
+    const find = vi.fn().mockResolvedValue({
+      creator: { userId: 'current' },
+    });
+    const activeCreator = vi.fn().mockResolvedValue(true);
+    const update = vi.fn().mockResolvedValue({
+      creator: { userId: 'new-owner', username: 'Nuevo responsable' },
+    });
+    const repository = {
+      permissions: vi.fn().mockResolvedValue([P.manage]),
+      find,
+      activeCreator,
+      update,
+    } as unknown as ActivitiesRepository;
+
+    await new ActivitiesUseCase(repository).update('admin', 'activity-1', {
+      creatorId: 'new-owner',
+    });
+
+    expect(activeCreator).toHaveBeenCalledWith('new-owner');
+    expect(update).toHaveBeenCalledWith(
+      'activity-1',
+      { creatorId: 'new-owner' },
+      undefined,
+    );
+  });
+
+  it('rechaza que lead cambie el responsable incluso si envía su propio usuario', async () => {
+    const update = vi.fn();
+    const repository = {
+      permissions: vi.fn().mockResolvedValue([P.updateOwn]),
+      update,
+    } as unknown as ActivitiesRepository;
+
+    await expect(
+      new ActivitiesUseCase(repository).update('lead', 'activity-1', {
+        creatorId: 'lead',
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(update).not.toHaveBeenCalled();
   });
 });

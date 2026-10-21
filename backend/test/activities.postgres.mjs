@@ -151,6 +151,30 @@ try {
     )
   ).activity;
   assert.equal(delegated.creator.userId, lead.user.user_id);
+  const reassigned = await call(
+    superuser,
+    'PATCH',
+    base + '/' + delegated.activityId,
+    { creatorId: other.user.user_id },
+    200,
+  );
+  assert.equal(reassigned.activity.creator.userId, other.user.user_id);
+  assert.equal(
+    (
+      await prisma.activities.findUniqueOrThrow({
+        where: { activity_id: delegated.activityId },
+      })
+    ).creator_id,
+    other.user.user_id,
+  );
+  const reassignedBack = await call(
+    superuser,
+    'PATCH',
+    base + '/' + delegated.activityId,
+    { creatorId: lead.user.user_id },
+    200,
+  );
+  assert.equal(reassignedBack.activity.creator.userId, lead.user.user_id);
   assert.equal(own.status, 'pending');
   assert.equal(own.actions.canApprove, false);
   const leadList = await call(lead, 'GET', base, undefined, 200);
@@ -185,7 +209,7 @@ try {
     'PATCH',
     base + '/' + own.activityId,
     { creatorId: other.user.user_id },
-    400,
+    403,
   );
   await call(
     lead,
@@ -211,6 +235,13 @@ try {
     base + '/' + foreign.activityId,
     { title: 'Directive update' },
     200,
+  );
+  await call(
+    directive,
+    'PATCH',
+    base + '/' + foreign.activityId,
+    { creatorId: lead.user.user_id },
+    403,
   );
   await call(
     directive,

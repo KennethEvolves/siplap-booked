@@ -1,5 +1,6 @@
 'use client';
 
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -8,6 +9,16 @@ import {
   DialogTitle,
   DialogFooter,
   DialogTrigger,
+=======
+import React, { useEffect, useState } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter, 
+  DialogTrigger 
+>>>>>>> df7a1ccdeb1589a70c2e7e9b41e6126cf79555a6
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/Button';
 import { apiFetch, BackendActivity } from '@/lib/api';
@@ -31,7 +42,6 @@ interface ActivityModalProps {
 interface UserOption {
   userId: string;
   username: string;
-  email: string;
 }
 
 // text-base en móvil evita que iOS haga zoom al enfocar un campo
@@ -55,19 +65,18 @@ export function ActivityModal({
   const setOpen = externalOnOpenChange || setInternalOpen;
 
   const isEditing = Boolean(initialActivity);
-  const today = new Date().toISOString().split('T')[0];
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
-  const [creatorId, setCreatorId] = useState('');
+  const [title, setTitle] = useState(initialActivity?.title ?? '');
+  const [description, setDescription] = useState(initialActivity?.description ?? '');
+  const [startDate, setStartDate] = useState(initialActivity?.startDate?.slice(0, 10) ?? '');
+  const [endDate, setEndDate] = useState(initialActivity?.endDate?.slice(0, 10) ?? '');
+  const [creatorId, setCreatorId] = useState(initialActivity?.creator?.userId ?? '');
   const [usersList, setUsersList] = useState<UserOption[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSuperUser = userRole === 'superuser';
 
+<<<<<<< HEAD
   // Sincronizar campos cuando se abre para editar o crear
   useEffect(() => {
     if (open) {
@@ -88,8 +97,21 @@ export function ActivityModal({
         setEndDate(today);
         setCreatorId('');
       }
+=======
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isSubmitting) return;
+    if (nextOpen && !initialActivity) {
+      const now = new Date();
+      const today = [now.getFullYear(), `${now.getMonth() + 1}`.padStart(2, '0'), `${now.getDate()}`.padStart(2, '0')].join('-');
+      setTitle('');
+      setDescription('');
+      setStartDate(today);
+      setEndDate(today);
+      setCreatorId('');
+>>>>>>> df7a1ccdeb1589a70c2e7e9b41e6126cf79555a6
     }
-  }, [open, initialActivity, today]);
+    setOpen(nextOpen);
+  };
 
   // Cargar directorio de usuarios solo si es Superusuario
   useEffect(() => {
@@ -97,6 +119,7 @@ export function ActivityModal({
       const fetchUsers = async () => {
         try {
           setLoadingUsers(true);
+<<<<<<< HEAD
           const res = await apiFetch<{ users: UserOption[] } | UserOption[]>('/users');
           const rawList = Array.isArray(res) ? res : (res?.users || []);
 
@@ -107,6 +130,13 @@ export function ActivityModal({
           }));
 
           setUsersList(mappedUsers);
+=======
+          const res = await apiFetch<{ users: UserOption[] }>('/api/activities/creators');
+          setUsersList(res.users.map((user) => ({
+            userId: user.userId,
+            username: user.username || 'Sin nombre',
+          })));
+>>>>>>> df7a1ccdeb1589a70c2e7e9b41e6126cf79555a6
         } catch {
           // Mantener lista vacía si falla de forma segura
         } finally {
@@ -142,7 +172,7 @@ export function ActivityModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => !isSubmitting && setOpen(val)}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {triggerButton !== undefined ? (
         <DialogTrigger asChild>{triggerButton}</DialogTrigger>
       ) : (
@@ -212,14 +242,25 @@ export function ActivityModal({
             />
           </div>
 
+<<<<<<< HEAD
           {/* Selector de creador solo para superusuario */}
+=======
+          {/* Solo el superusuario puede asignar o cambiar al responsable. */}
+>>>>>>> df7a1ccdeb1589a70c2e7e9b41e6126cf79555a6
           {isSuperUser && (
             <div className="bg-secondary border border-border rounded-xl p-3 space-y-1.5">
               <label className="block text-xs font-bold text-foreground uppercase tracking-wider">
                 Asignar Responsable / Creador
               </label>
+<<<<<<< HEAD
               <p className="text-[11px] text-muted-foreground">
                 Selecciona al usuario que figurará como autor de esta actividad.
+=======
+              <p className="text-[11px] text-blue-700">
+                {isEditing
+                  ? 'Selecciona el usuario que quedará como responsable de esta actividad.'
+                  : 'Selecciona al usuario que figurará como responsable de esta actividad.'}
+>>>>>>> df7a1ccdeb1589a70c2e7e9b41e6126cf79555a6
               </p>
 
               {loadingUsers ? (
@@ -234,10 +275,18 @@ export function ActivityModal({
                   className={`${fieldClass} min-h-[44px] cursor-pointer`}
                   disabled={isSubmitting}
                 >
-                  <option value="">Mantener autor actual / Superusuario</option>
+                  <option value="">
+                    {isEditing ? 'Conservar responsable actual' : 'Usar mi usuario'}
+                  </option>
+                  {initialActivity?.creator &&
+                    !usersList.some((user) => user.userId === initialActivity.creator.userId) && (
+                      <option value={initialActivity.creator.userId}>
+                        {initialActivity.creator.username || 'Responsable actual'}
+                      </option>
+                    )}
                   {usersList.map((u) => (
                     <option key={u.userId} value={u.userId}>
-                      {u.username} ({u.email})
+                      {u.username}
                     </option>
                   ))}
                 </select>

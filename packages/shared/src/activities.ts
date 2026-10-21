@@ -34,10 +34,9 @@ const ordered = (data: { startDate?: string; endDate?: string }) =>
 export const createActivitySchema = fields
   .extend({ creatorId: z.uuid().optional() })
   .refine(ordered, "La fecha final no puede ser anterior a la inicial");
-// Creator and approval fields deliberately cannot be changed through the ordinary update.
 export const updateActivitySchema = fields
-  .extend({ creatorId: z.uuid().optional() })
   .partial()
+  .extend({ creatorId: z.uuid().optional() })
   .refine((data) => Object.keys(data).length > 0, "Envía al menos un campo")
   .refine(ordered, "La fecha final no puede ser anterior a la inicial");
 export const approveActivitySchema = z.strictObject({

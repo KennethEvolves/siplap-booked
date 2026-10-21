@@ -95,12 +95,12 @@ export async function apiFetch<T>(
 export interface UserProfileResponse {
   profile: {
     userId: string;
-    username: string;
+    username: string | null;
     email: string;
-    status: { statusId: string; name: string } | null;
-    userType: { typeId: string; name: string } | null;
+    status: { statusId: string; name: string };
+    userType: { typeId: string; name: string | null } | null;
     department: { departmentId: string; name: string } | null;
-    roles: Array<{ roleId: string; name: string }>;
+    roles: Array<{ roleId: string; name: string | null }>;
     firstName: string | null;
     lastName: string | null;
     phoneNumber: string | null;
@@ -108,8 +108,8 @@ export interface UserProfileResponse {
     dateOfBirth: string | null;
     bio: string | null;
     shift: string | null;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: string | null;
+    updatedAt: string | null;
   };
 }
 
@@ -194,6 +194,10 @@ export async function updateActivityApproval(
   });
 }
 
+export async function deleteActivity(activityId: string): Promise<void> {
+  await apiFetch<void>(`/api/activities/${activityId}`, { method: 'DELETE' });
+}
+
 export interface UpdateActivityInput {
   title?: string;
   description?: string | null;
@@ -209,5 +213,98 @@ export async function updateActivity(
   return apiFetch<{ activity: BackendActivity }>(`/api/activities/${activityId}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
+  });
+}
+
+// ==========================================
+// Módulo de Reservaciones (RBAC)
+// ==========================================
+
+export type ReservationStatus = 'active' | 'in_use' | 'cancelled' | 'completed';
+
+export interface ReservationCreatorOption {
+  userId: string;
+  username: string | null;
+  email: string;
+}
+
+export interface BackendReservation {
+  reservationId: string;
+  title: string | null;
+  description: string | null;
+  activityId: string | null;
+  status: ReservationStatus | null;
+  startTime: string | null;
+  endTime: string | null;
+  creator: { userId: string; username: string | null };
+  createdAt: string | null;
+  updatedAt: string | null;
+  actions: { canView: boolean; canUpdate: boolean; canDelete: boolean };
+}
+
+export interface CreateReservationInput {
+  title: string;
+  description?: string | null;
+  activityId?: string | null;
+  startTime: string;
+  endTime: string;
+  creatorId?: string;
+}
+
+export interface UpdateReservationInput {
+  title?: string;
+  description?: string | null;
+  activityId?: string | null;
+  startTime?: string;
+  endTime?: string;
+  status?: ReservationStatus;
+}
+
+export interface ReservationsResponse {
+  reservations: BackendReservation[];
+  total: number;
+  page: number;
+  limit: number;
+  capabilities: {
+    canCreate: boolean;
+    canManage: boolean;
+    canViewAll: boolean;
+  };
+}
+
+export async function getReservations(): Promise<ReservationsResponse> {
+  return apiFetch<ReservationsResponse>('/api/reservations?page=1&limit=100');
+}
+
+export async function getReservationCreators(): Promise<{
+  users: ReservationCreatorOption[];
+}> {
+  return apiFetch<{ users: ReservationCreatorOption[] }>(
+    '/api/reservations/creators',
+  );
+}
+
+export async function createReservation(
+  input: CreateReservationInput,
+): Promise<{ reservation: BackendReservation }> {
+  return apiFetch<{ reservation: BackendReservation }>('/api/reservations', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateReservation(
+  reservationId: string,
+  input: UpdateReservationInput,
+): Promise<{ reservation: BackendReservation }> {
+  return apiFetch<{ reservation: BackendReservation }>(
+    `/api/reservations/${reservationId}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
+}
+
+export async function deleteReservation(reservationId: string): Promise<void> {
+  await apiFetch<void>(`/api/reservations/${reservationId}`, {
+    method: 'DELETE',
   });
 }

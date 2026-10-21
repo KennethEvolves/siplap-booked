@@ -59,7 +59,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.accessToken = user.accessToken;
         token.roles = user.roles;
-        token.permissions = (user as any).permissions || [];
+        token.permissions = user.permissions ?? [];
         token.userId = user.id;
       }
       if (!user && typeof token.accessToken === 'string') {

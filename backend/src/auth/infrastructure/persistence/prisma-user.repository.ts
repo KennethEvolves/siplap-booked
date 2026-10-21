@@ -56,8 +56,6 @@ export class PrismaUserRepository implements UserRepository {
       },
     });
 
-    console.log('--- USER ROLES PRISMA ---', JSON.stringify(user?.user_roles, null, 2));
-
     if (!user) {
       return null;
     }
@@ -78,8 +76,6 @@ export class PrismaUserRepository implements UserRepository {
     }
     const permissions = Array.from(permissionsSet);
 
-    console.log('--- PERMISOS CALCULADOS EN REPO ---', permissions);
-
     return {
       userId: user.user_id,
       username: user.username,
@@ -88,6 +84,6 @@ export class PrismaUserRepository implements UserRepository {
       status: user.user_statuses?.name ?? null,
       roles,
       permissions,
-    } as any;
+    };
   }
 }

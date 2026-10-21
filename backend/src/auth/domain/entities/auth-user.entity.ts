@@ -5,4 +5,5 @@ export interface AuthUser {
   passwordHash: string;
   status: string | null;
   roles: string[];
+  permissions: string[];
 }

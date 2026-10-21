@@ -17,13 +17,16 @@ export function useRbac(): RbacContext {
   const isLoading = status === 'loading';
 
   return useMemo(() => {
-    const sessionUser = session?.user as any;
+    const sessionUser = session?.user;
     const roles: string[] = sessionUser?.roles ?? [];
+    const sessionPermissions: string[] = sessionUser?.permissions ?? [];
     
     // En el backend RBAC estandarizado, SUPERUSUARIO o manage:all tienen control total
-    const isSuperUser = roles.some((r) =>
-      ['SUPERUSUARIO', 'SUPER_ADMIN', 'ADMIN'].includes(r.toUpperCase()),
-    );
+    const isSuperUser =
+      sessionPermissions.includes('manage:all') ||
+      roles.some((r) =>
+        ['SUPERUSUARIO', 'SUPER_ADMIN', 'ADMIN'].includes(r.toUpperCase()),
+      );
 
     // Permisos mapeados del usuario o concedidos por el rol maestro
     const permissions: string[] = isSuperUser
@@ -33,12 +36,15 @@ export function useRbac(): RbacContext {
           'users:read',
           'users:update',
           'users:delete',
-          'activities:create',
-          'activities:read',
-          'activities:update',
-          'activities:delete',
+          'activity:manage',
+          'activity:view_all',
+          'activity:approve_all',
+          'activity:update_all',
+          'activity:create_own',
+          'activity:view_own',
+          'activity:update_own',
         ]
-      : (sessionUser?.permissions ?? []);
+      : sessionPermissions;
 
     const hasPermission = (slug: string): boolean => {
       if (permissions.includes('manage:all')) return true;
@@ -54,10 +60,15 @@ export function useRbac(): RbacContext {
       permissions,
       isSuperUser,
       canAccessUsers: hasPermission('manage:all') || hasPermission('users:read'),
-      canAccessActivities: hasPermission('manage:all') || hasPermission('activities:read'),
+      canAccessActivities:
+        hasPermission('manage:all') ||
+        hasPermission('activity:manage') ||
+        hasPermission('activity:view_all') ||
+        hasPermission('activity:view_own') ||
+        hasPermission('activity:create_own'),
       hasPermission,
       hasRole,
       isLoading,
     };
-  }, [session, status]);
+  }, [session, isLoading]);
 }

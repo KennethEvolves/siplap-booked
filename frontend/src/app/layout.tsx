@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google"; // Importamos una fuente moderna
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"], // Pesos ideales para titulos y textos
+  variable: "--font-sans", // debe llamarse --font-sans para que coincida con globals.css
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "SIAPL-BOOKED Dashboard",
+  title: "SIAPL-BOOKED | Universidad de Oriente",
   description: "Panel de Superusuario",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" className={montserrat.variable} suppressHydrationWarning>
       <body
-        className={`${jakarta.className} min-h-screen flex flex-col antialiased bg-slate-50 text-slate-800 text-base`}
+        className="min-h-screen flex flex-col antialiased bg-background text-foreground text-base"
         suppressHydrationWarning
       >
         {children}

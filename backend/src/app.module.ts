@@ -6,6 +6,7 @@ import { AuthModule } from './auth/infrastructure/auth.module.js';
 import { UsersModule } from './users/infrastructure/users.module.js';
 import { RolesModule } from './roles/infrastructure/roles.module.js';
 import { PermissionsModule } from './permissions/infrastructure/permissions.module.js';
+import { ReservationsModule } from './reservations/infrastructure/reservations.module.js';
 
 import { AppController } from './app.controller.js';
 
@@ -17,6 +18,7 @@ import { AppController } from './app.controller.js';
     UsersModule,
     RolesModule,
     PermissionsModule,
+    ReservationsModule,
   ],
 
   controllers: [

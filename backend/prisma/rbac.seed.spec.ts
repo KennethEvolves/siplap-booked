@@ -63,6 +63,15 @@ function database() {
       },
     },
     role_permissions: {
+      findMany: async ({
+        where,
+      }: {
+        where: { permission_id: string };
+        select: { role_id: true };
+      }) =>
+        links
+          .filter((link) => link.permission_id === where.permission_id)
+          .map(({ role_id }) => ({ role_id })),
       findFirst: async ({
         where,
       }: {
@@ -93,19 +102,56 @@ describe('RBAC seed', () => {
   it('creates and links the full catalog to SUPERUSUARIO idempotently', async () => {
     const db = database();
     db.roles.push({ role_id: 'reader', name: 'LECTOR' });
+    db.roles.push({ role_id: 'directive', name: 'DIRECTIVO' });
+    db.roles.push({ role_id: 'lead', name: 'JEFE DE DEPARTAMENTO' });
+    db.roles.push({ role_id: 'teacher', name: 'DOCENTE' });
+    db.roles.push({ role_id: 'personal', name: 'PERSONAL' });
 
     const result = await seedRbac(db.prisma);
     const superuser = db.roles.find((role) => role.name === 'SUPERUSUARIO')!;
+    const reservationManager = db.roles.find(
+      (role) => role.name === 'RESERVATION_MANAGER',
+    )!;
     expect(result.permissions).toEqual(
       FULL_PERMISSIONS_CATALOG.map(({ slug }) => slug),
     );
     expect(db.permissions.map(({ slug }) => slug).sort()).toEqual(
       [...FULL_PERMISSIONS_CATALOG.map(({ slug }) => slug)].sort(),
     );
-    expect(db.links).toHaveLength(FULL_PERMISSIONS_CATALOG.length);
-    expect(db.links.every((link) => link.role_id === superuser.role_id)).toBe(
-      true,
+    const ownPermissionSlugs = [
+      'reservation:view_all',
+      'reservation:create_own',
+      'reservation:view_own',
+      'reservation:update_own',
+      'reservation:delete_own',
+    ];
+    expect(db.links).toHaveLength(
+      FULL_PERMISSIONS_CATALOG.length + 1 + ownPermissionSlugs.length * 4,
     );
+    expect(
+      db.links.filter((link) => link.role_id === superuser.role_id),
+    ).toHaveLength(FULL_PERMISSIONS_CATALOG.length);
+    expect(
+      db.links.filter((link) => link.role_id === reservationManager.role_id),
+    ).toEqual([
+      {
+        role_id: reservationManager.role_id,
+        permission_id: db.permissions.find(
+          ({ slug }) => slug === 'reservation:manage',
+        )?.permission_id,
+      },
+    ]);
+    for (const roleId of ['directive', 'lead', 'teacher', 'personal']) {
+      const assignments = db.links.filter((link) => link.role_id === roleId);
+      expect(assignments).toHaveLength(ownPermissionSlugs.length);
+      for (const slug of ownPermissionSlugs) {
+        const permission = db.permissions.find((item) => item.slug === slug)!;
+        expect(assignments).toContainEqual({
+          role_id: roleId,
+          permission_id: permission.permission_id,
+        });
+      }
+    }
     expect(BASE_PERMISSIONS.every((slug) => result.permissions.includes(slug))).toBe(
       true,
     );
@@ -135,5 +181,36 @@ describe('RBAC seed', () => {
     expect(db.links.some(({ permission_id }) => permission_id === 'old')).toBe(
       false,
     );
+  });
+
+  it('migra permisos plurales de reservaciones conservando su alcance por rol', async () => {
+    const db = database();
+    db.roles.push({ role_id: 'directive', name: 'DIRECTIVE' });
+    db.permissions.push({ permission_id: 'old-create', slug: 'reservations:create' });
+    db.permissions.push({ permission_id: 'old-read', slug: 'reservations:read' });
+    db.links.push(
+      { role_id: 'directive', permission_id: 'old-create' },
+      { role_id: 'directive', permission_id: 'old-read' },
+    );
+
+    await seedRbac(db.prisma);
+
+    expect(db.permissions.some(({ slug }) => slug.startsWith('reservations:'))).toBe(
+      false,
+    );
+    const createPermission = db.permissions.find(
+      ({ slug }) => slug === 'reservation:create_own',
+    )!;
+    const viewPermission = db.permissions.find(
+      ({ slug }) => slug === 'reservation:view_all',
+    )!;
+    expect(db.links).toContainEqual({
+      role_id: 'directive',
+      permission_id: createPermission.permission_id,
+    });
+    expect(db.links).toContainEqual({
+      role_id: 'directive',
+      permission_id: viewPermission.permission_id,
+    });
   });
 });

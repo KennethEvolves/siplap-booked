@@ -1,5 +1,6 @@
 import { z } from 'zod';
 export * from './activities.js';
+export * from './reservations.js';
 
 export const uuidSchema = z.uuid();
 const description = z.string().trim().max(255);

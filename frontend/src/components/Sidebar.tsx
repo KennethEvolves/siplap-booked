@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -22,43 +22,103 @@ import {
   User,
 } from 'lucide-react';
 
-// Definimos los roles que tienen permiso de administrar todo
 const ADMIN_ROLES = ['superuser', 'reservation_manager'];
-
-const MENU_ITEMS = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Mi Perfil', href: '/perfil', icon: User },
-  { 
-    name: 'Usuarios y Roles', 
-    href: '/admin', 
-    icon: Users,
-    roles: ADMIN_ROLES // Solo superuser y reservation_manager
-  },
-  { name: 'Actividades', href: '/activities', icon: CalendarCheck },
-  { 
-    name: 'Espacios', 
-    href: '/spaces', 
-    icon: MapPin,
-    roles: ADMIN_ROLES // Oculto para directive, lead, teacher, personal
-  },
-  { 
-    name: 'Recursos', 
-    href: '/resources', 
-    icon: Box,
-    roles: ADMIN_ROLES // Oculto para directive, lead, teacher, personal
-  },
-  { name: 'Reservaciones', href: '/reservations', icon: Clock }, // Visible para todos
-  { name: 'Reportes', href: '/reports', icon: FileText },
-];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
-  // Obtenemos el rol del usuario autenticado
   const { data: session } = useSession();
-  const userRole = (session?.user as any)?.role;
+  const user = session?.user as any;
+  const userRole: string | undefined = user?.role;
+  const permissions: string[] = (user?.permissions as string[]) || [];
+
+  const isSuperUser = useMemo(() => {
+    return (
+      permissions.includes('manage:all') ||
+      (userRole && ADMIN_ROLES.includes(userRole.toLowerCase()))
+    );
+  }, [permissions, userRole]);
+
+  // Evaluaciones granulares de visibilidad por módulo
+  const canSeeUsers = useMemo(() => {
+    return isSuperUser || permissions.some((p) => p.startsWith('users:'));
+  }, [isSuperUser, permissions]);
+
+  const canSeeActivities = useMemo(() => {
+    return isSuperUser || permissions.some((p) => p.startsWith('activity:'));
+  }, [isSuperUser, permissions]);
+
+  const canSeeSpaces = useMemo(() => {
+    return isSuperUser || permissions.some((p) => p.startsWith('space:'));
+  }, [isSuperUser, permissions]);
+
+  const canSeeResources = useMemo(() => {
+    return isSuperUser || permissions.some((p) => p.startsWith('resource:'));
+  }, [isSuperUser, permissions]);
+
+  const canSeeReservations = useMemo(() => {
+    return isSuperUser || permissions.some((p) => p.startsWith('reservation:'));
+  }, [isSuperUser, permissions]);
+
+  const canSeeReports = useMemo(() => {
+    return isSuperUser || permissions.some((p) => p.startsWith('report:'));
+  }, [isSuperUser, permissions]);
+
+  // Lista de elementos con su condición de visibilidad
+  const menuItems = useMemo(() => {
+    const items = [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, visible: true },
+      { name: 'Mi Perfil', href: '/perfil', icon: User, visible: true },
+      { 
+        name: 'Usuarios y Roles', 
+        href: '/admin', 
+        icon: Users,
+        visible: canSeeUsers
+      },
+      { 
+        name: 'Actividades', 
+        href: '/activities', 
+        icon: CalendarCheck,
+        visible: canSeeActivities 
+      },
+      { 
+        name: 'Espacios', 
+        href: '/spaces', 
+        icon: MapPin,
+        visible: canSeeSpaces 
+      },
+      { 
+        name: 'Recursos', 
+        href: '/resources', 
+        icon: Box,
+        visible: canSeeResources 
+      },
+      { 
+        name: 'Reservaciones', 
+        href: '/reservations', 
+        icon: Clock,
+        visible: canSeeReservations 
+      },
+      { 
+        name: 'Reportes', 
+        href: '/reports', 
+        icon: FileText,
+        visible: canSeeReports 
+      },
+    ];
+
+    // Desaparece por completo cualquier módulo sin permiso
+    return items.filter((item) => item.visible);
+  }, [
+    canSeeUsers,
+    canSeeActivities,
+    canSeeSpaces,
+    canSeeResources,
+    canSeeReservations,
+    canSeeReports,
+  ]);
 
   const isActive = (path: string) =>
     pathname === path || pathname?.startsWith(`${path}/`);
@@ -73,12 +133,6 @@ export function Sidebar() {
         ? 'bg-white text-primary font-semibold shadow-sm'
         : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
     }`;
-
-  // Filtramos los items: si no especifica roles es público, si especifica roles verificamos coincidencia
-  const filteredMenuItems = MENU_ITEMS.filter((item) => {
-    if (!item.roles) return true;
-    return userRole && item.roles.includes(userRole);
-  });
 
   return (
     <>
@@ -153,9 +207,9 @@ export function Sidebar() {
             </button>
           </div>
 
-          {/* Módulos filtrados según el rol */}
+          {/* Módulos filtrados según los permisos reales */}
           <nav className="space-y-1.5">
-            {filteredMenuItems.map((item) => {
+            {menuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link

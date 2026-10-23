@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export default function ReservationsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const user = session?.user as any;
   const currentUserId = user?.id;
   const permissions: string[] = (user?.permissions as string[]) || [];
@@ -67,35 +67,37 @@ export default function ReservationsPage() {
     try {
       setLoading(true);
       const res = await getReservations();
-      setReservations(res.reservations || []);
+      // Garantizar que siempre se asigne un arreglo para evitar errores de .filter
+      setReservations(Array.isArray(res?.reservations) ? res.reservations : []);
       setCapabilities(
-        res.capabilities || { canCreate: true, canManage: false, canViewAll: false }
+        res?.capabilities || { canCreate: true, canManage: false, canViewAll: false }
       );
 
-      if (res.capabilities?.canManage || isSuperUser) {
+      if (res?.capabilities?.canManage || isSuperUser) {
         try {
           const creatorsRes = await getReservationCreators();
-          setCreatorsList(creatorsRes.users || []);
+          setCreatorsList(creatorsRes?.users || []);
         } catch (e) {
           console.warn('No se pudo cargar la lista de creadores:', e);
         }
       }
     } catch (err: any) {
       showToast('error', err?.message || 'Error al sincronizar reservaciones del servidor.');
+      setReservations([]);
     } finally {
       setLoading(false);
     }
   }, [isSuperUser]);
 
   useEffect(() => {
-    if (session) {
+    if (status === 'authenticated') {
       loadData();
     }
-  }, [session, loadData]);
+  }, [status, loadData]);
 
   const canShowAllTabs = capabilities.canViewAll || isSuperUser;
 
-  const filteredReservations = reservations.filter((r) => {
+  const filteredReservations = (reservations || []).filter((r) => {
     if (canShowAllTabs && activeTab === 'mine') {
       const isOwner =
         (currentUserId && r.creator?.userId === currentUserId) ||
@@ -110,12 +112,15 @@ export default function ReservationsPage() {
   const handleSave = async (payload: any) => {
     try {
       if (selectedReservation?.reservationId) {
-        await updateReservation(selectedReservation.reservationId, payload);
+        // Exclusión defensiva de creatorId y metadatos no admitidos en updates
+        const { creatorId, id, creator, actions, ...updatePayload } = payload;
+        await updateReservation(selectedReservation.reservationId, updatePayload);
         showToast('success', 'Reservación actualizada exitosamente.');
       } else {
         await createReservation(payload);
         showToast('success', 'Reservación creada exitosamente.');
       }
+      setIsModalOpen(false);
       await loadData();
     } catch (error: any) {
       showToast('error', error.message || 'Error al guardar la reservación.');

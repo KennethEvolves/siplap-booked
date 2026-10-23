@@ -29,7 +29,11 @@ export default function ActivitiesPage() {
 
   const [activities, setActivities] = useState<BackendActivity[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // Pestañas y filtros
+  const [activeTab, setActiveTab] = useState<'mine' | 'all'>('mine');
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
+  
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [, startTransition] = useTransition();
 
@@ -69,12 +73,15 @@ export default function ActivitiesPage() {
     return permissions.includes('activity:update_own');
   }, [permissions]);
 
-  // Verificar si el usuario puede editar una actividad específica
+  // Si puede ver todo, se habilitan las pestañas para alternar
+  const canShowAllTabs = canViewAll || isSuperUser;
+
+  // Comprobar si el usuario puede editar una actividad específica
   const canEditActivity = (activity: BackendActivity) => {
     if (canEditAll) return true;
     if (canEditOwn) {
       const isOwner = 
-        (currentUserId && activity.creator?.userId === currentUserId) ||
+        (currentUserId && (activity.creator?.userId === currentUserId || (activity as any).creatorId === currentUserId)) ||
         (currentUsername && activity.creator?.username?.toLowerCase() === currentUsername.toLowerCase());
       return Boolean(isOwner);
     }
@@ -123,6 +130,7 @@ export default function ActivitiesPage() {
       if (actRes?.activities && Array.isArray(actRes.activities)) {
         let list = actRes.activities;
 
+        // Si el rol operativo no tiene permiso de ver todo, filtramos localmente
         if (!hasAccessToAll) {
           list = list.filter((act) => {
             const matchesId = userId && (act.creator?.userId === userId || (act as any).creatorId === userId);
@@ -145,7 +153,7 @@ export default function ActivitiesPage() {
   }, []);
 
   // =========================================================================
-  // CREACIÓN Y EDICIÓN (POST / PATCH /api/activities)
+  // CREACIÓN Y EDICIÓN
   // =========================================================================
   const handleSaveActivity = async (
     data: { 
@@ -163,7 +171,6 @@ export default function ActivitiesPage() {
         : undefined;
 
       if (activityId) {
-        // Modo Edición: PATCH /api/activities/:activityId
         const res = await updateActivity(activityId, {
           title: data.title,
           description: data.description || null,
@@ -181,7 +188,6 @@ export default function ActivitiesPage() {
           showToast('success', 'Actividad actualizada exitosamente.');
         }
       } else {
-        // Modo Creación: POST /api/activities
         if (!canCreate) {
           showToast('error', 'No cuentas con permiso para crear actividades.');
           return;
@@ -228,12 +234,32 @@ export default function ActivitiesPage() {
     }
   };
 
+  // =========================================================================
+  // FILTRADO DINÁMICO CORREGIDO
+  // =========================================================================
   const filteredActivities = activities.filter((activity) => {
+    // En la pestaña "Mis Actividades", comparamos de forma estricta la autoría del registro
+    if (canShowAllTabs && activeTab === 'mine') {
+      const matchesUserId =
+        currentUserId &&
+        (activity.creator?.userId === currentUserId ||
+          (activity as any).creatorId === currentUserId);
+
+      const matchesUsername =
+        currentUsername &&
+        activity.creator?.username?.trim().toLowerCase() ===
+          currentUsername.trim().toLowerCase();
+
+      const isActuallyMine = Boolean(matchesUserId || matchesUsername);
+
+      if (!isActuallyMine) return false;
+    }
+
     if (filterStatus === 'TODOS') return true;
     return activity.status?.toUpperCase() === filterStatus.toUpperCase();
   });
 
- const getStatusBadge = (status: BackendActivityStatus) => {
+  const getStatusBadge = (status: BackendActivityStatus) => {
     const base =
       'inline-block whitespace-nowrap px-3 py-1 text-xs rounded-full font-semibold border';
     switch (status) {
@@ -253,7 +279,6 @@ export default function ActivitiesPage() {
   const actionBtn =
     'cursor-pointer h-9 md:h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all';
 
-  // Los botones se usan en la tabla (escritorio) y en las tarjetas (móvil)
   const renderActions = (activity: BackendActivity) => {
     const userCanEditThis = canEditActivity(activity);
 
@@ -354,7 +379,7 @@ export default function ActivitiesPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-4 md:p-6 rounded-2xl border border-border shadow-sm">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground">
+                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
                   Gestión de Actividades
                 </h1>
                 {isSuperUser && (
@@ -374,7 +399,38 @@ export default function ActivitiesPage() {
             )}
           </div>
 
-          {/* Filtros de estado: scroll horizontal en pantallas chicas */}
+          {/* Pestañas: Mis Actividades vs Todas las Actividades */}
+          {canShowAllTabs && (
+            <div className="flex items-center gap-2 bg-card p-2 rounded-2xl border border-border shadow-sm">
+              <Button
+                size="sm"
+                variant={activeTab === 'mine' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('mine')}
+                className={`rounded-xl text-xs font-semibold ${
+                  activeTab === 'mine'
+                    ? 'bg-primary hover:bg-uno-ciruela text-primary-foreground'
+                    : 'text-foreground border-border hover:bg-secondary'
+                }`}
+              >
+                Mis Actividades
+              </Button>
+              <Button
+                size="sm"
+                variant={activeTab === 'all' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('all')}
+                className={`flex items-center gap-1.5 rounded-xl text-xs font-semibold ${
+                  activeTab === 'all'
+                    ? 'bg-primary hover:bg-uno-ciruela text-primary-foreground'
+                    : 'text-foreground border-border hover:bg-secondary'
+                }`}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Todas las Actividades (Administración)
+              </Button>
+            </div>
+          )}
+
+          {/* Filtros de estado */}
           <div className="flex items-center gap-2 bg-card p-3 md:p-4 rounded-2xl border border-border shadow-sm overflow-x-auto">
             <span className="shrink-0 text-xs font-bold text-muted-foreground uppercase tracking-wider mr-2">
               Filtrar estado:
@@ -403,7 +459,7 @@ export default function ActivitiesPage() {
             ))}
           </div>
 
-          {/* Actividades */}
+          {/* Tabla de Actividades */}
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
             {loading ? (
               <div className="flex flex-col items-center justify-center p-12 gap-3 text-muted-foreground">
@@ -412,7 +468,7 @@ export default function ActivitiesPage() {
               </div>
             ) : (
               <>
-                {/* Escritorio y tablet horizontal: tabla */}
+                {/* Escritorio y tablet horizontal */}
                 <div className="hidden md:block">
                   <Table>
                     <TableHeader className="bg-secondary/70">
@@ -451,7 +507,7 @@ export default function ActivitiesPage() {
                   </Table>
                 </div>
 
-                {/* Móvil: tarjetas apiladas */}
+                {/* Móvil */}
                 <div className="md:hidden divide-y divide-border">
                   {filteredActivities.length === 0 ? (
                     <p className="text-center py-8 px-4 text-muted-foreground text-sm">

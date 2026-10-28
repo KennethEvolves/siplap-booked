@@ -437,14 +437,6 @@ export type activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   deleteMany?: Prisma.activity_requirementsScalarWhereInput | Prisma.activity_requirementsScalarWhereInput[]
 }
 
-export type DecimalFieldUpdateOperationsInput = {
-  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
-}
-
 export type activity_requirementsCreateNestedOneWithoutRequirement_itemsInput = {
   create?: Prisma.XOR<Prisma.activity_requirementsCreateWithoutRequirement_itemsInput, Prisma.activity_requirementsUncheckedCreateWithoutRequirement_itemsInput>
   connectOrCreate?: Prisma.activity_requirementsCreateOrConnectWithoutRequirement_itemsInput
@@ -1131,7 +1123,7 @@ export interface activity_requirementsFieldRefs {
   readonly observations: Prisma.FieldRef<"activity_requirements", 'String'>
   readonly created_at: Prisma.FieldRef<"activity_requirements", 'DateTime'>
 }
-    
+
 
 // Custom InputTypes
 /**

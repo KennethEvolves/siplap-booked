@@ -23,6 +23,18 @@ const own = {
 };
 
 describe('Permisos de reservaciones', () => {
+  it('valida una o varias asociaciones a espacios y rechaza ids repetidos', () => {
+    const body = {
+      title: 'Planeación',
+      description: null,
+      activityId: null,
+      startTime: '2026-10-20T09:00:00.000Z',
+      endTime: '2026-10-20T10:00:00.000Z',
+    };
+    const spaceId = '550e8400-e29b-41d4-a716-446655440000';
+    expect(createReservationSchema.safeParse({ ...body, spaceIds: [spaceId] }).success).toBe(true);
+    expect(createReservationSchema.safeParse({ ...body, spaceIds: [spaceId, spaceId] }).success).toBe(false);
+  });
   it('superusuario y reservation_manager gestionan reservaciones de cualquiera', () => {
     for (const permission of [P.manage, 'manage:all']) {
       const policy = new ReservationsPolicy('manager', [permission]);

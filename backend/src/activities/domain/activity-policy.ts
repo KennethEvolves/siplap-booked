@@ -23,6 +23,9 @@ export class ActivityPolicy {
   get canViewOwn() {
     return this.has(P.viewOwn);
   }
+  get canViewAssigned() {
+    return this.has(P.viewAssigned);
+  }
   get canUpdateAll() {
     return this.manages || this.has(P.updateAll);
   }
@@ -32,7 +35,7 @@ export class ActivityPolicy {
   actions(creatorId: string): ActivityActions {
     const own = creatorId === this.userId;
     return {
-      canView: this.canViewAll || (own && this.canViewOwn),
+      canView: this.canViewAll || (own && this.canViewOwn) || this.canViewAssigned,
       canUpdate: this.canUpdateAll || (own && this.has(P.updateOwn)),
       canApprove: this.canApprove,
       canDelete: this.manages,

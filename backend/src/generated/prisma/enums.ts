@@ -30,6 +30,8 @@ export type activity_type = (typeof activity_type)[keyof typeof activity_type]
 
 
 export const reservation_status = {
+  pending: 'pending',
+  reserved: 'reserved',
   active: 'active',
   in_use: 'in_use',
   cancelled: 'cancelled',

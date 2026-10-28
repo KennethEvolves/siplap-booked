@@ -414,10 +414,6 @@ export type activity_reportsUpdateOneRequiredWithoutActivity_report_evidencesNes
   update?: Prisma.XOR<Prisma.XOR<Prisma.activity_reportsUpdateToOneWithWhereWithoutActivity_report_evidencesInput, Prisma.activity_reportsUpdateWithoutActivity_report_evidencesInput>, Prisma.activity_reportsUncheckedUpdateWithoutActivity_report_evidencesInput>
 }
 
-export type DateTimeFieldUpdateOperationsInput = {
-  set?: Date | string
-}
-
 export type activity_reportsCreateWithoutActivitiesInput = {
   report_id?: string
   folio: string
@@ -1066,7 +1062,7 @@ export interface activity_reportsFieldRefs {
   readonly created_at: Prisma.FieldRef<"activity_reports", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"activity_reports", 'DateTime'>
 }
-    
+
 
 // Custom InputTypes
 /**

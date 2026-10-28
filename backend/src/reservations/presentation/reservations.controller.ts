@@ -52,6 +52,11 @@ export class ReservationsController {
     return { users: await this.reservations.creators(req.user.sub) };
   }
 
+  @Get('spaces')
+  spaces(@Req() req: Request) {
+    return this.reservations.spaces(req.user.sub);
+  }
+
   @Get(':reservationId')
   async get(
     @Req() req: Request,

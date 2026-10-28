@@ -8,6 +8,9 @@ import {
   ACTIVITY_PERMISSIONS as P,
   type Activity,
   type ActivityList,
+  type ActivityReport,
+  type ActivityPersonnelInput,
+  type AttachExternalLocations,
   type ApproveActivity,
   type CreateActivity,
   type UpdateActivity,
@@ -39,6 +42,7 @@ export class ActivitiesUseCase {
       canAssignCreator: policy.manages,
       canViewAll: policy.canViewAll,
       canViewOwn: policy.canViewAll || policy.canViewOwn,
+      canViewAssigned: policy.canViewAssigned,
       canUpdateAll: policy.canUpdateAll,
       canUpdateOwn: policy.canUpdateAll || policy.has(P.updateOwn),
       canApprove: policy.canApprove,
@@ -52,11 +56,12 @@ export class ActivitiesUseCase {
   }
   async list(userId: string, query: ActivityList) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn);
-    const result = await this.repository.list(
-      query,
-      policy.canViewAll ? undefined : userId,
-    );
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    const creatorId = policy.canViewAll || !policy.canViewOwn ? undefined : userId;
+    const assignedUserId = policy.canViewAll || !policy.canViewAssigned ? undefined : userId;
+    const result = assignedUserId
+      ? await this.repository.list(query, creatorId, assignedUserId)
+      : await this.repository.list(query, creatorId);
     return {
       ...result,
       activities: result.activities.map((a) => this.present(a, policy)),
@@ -65,17 +70,34 @@ export class ActivitiesUseCase {
   }
   async get(userId: string, activityId: string) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn);
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
     const activity = await this.repository.find(
       activityId,
-      policy.canViewAll ? undefined : userId,
+      policy.canViewAll || !policy.canViewOwn ? undefined : userId,
+      policy.canViewAll || !policy.canViewAssigned ? undefined : userId,
     );
     if (!activity) throw new NotFoundException('Actividad no encontrada');
     return this.present(activity, policy);
   }
+  async report(userId: string, activityId: string): Promise<ActivityReport> {
+    const policy = await this.policy(userId);
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    const activity = await this.repository.find(
+      activityId,
+      policy.canViewAll || !policy.canViewOwn ? undefined : userId,
+      policy.canViewAll || !policy.canViewAssigned ? undefined : userId,
+    );
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    const report = await this.repository.report(activityId);
+    if (!report) throw new NotFoundException('El reporte de planeación aún no está generado');
+    return report;
+  }
   async create(userId: string, input: CreateActivity) {
     const policy = await this.policy(userId);
     this.require(policy.canCreate);
+    if (policy.manages) {
+      this.require(!!input.creatorId && input.creatorId !== userId);
+    }
     this.require(
       !input.creatorId || input.creatorId === userId || policy.manages,
     );
@@ -117,12 +139,83 @@ export class ActivitiesUseCase {
     const policy = await this.policy(userId);
     this.require(policy.canApprove);
     return this.present(
-      await this.repository.approve(activityId, input.status),
+      await this.repository.approve(activityId, input.direction, input.status),
       policy,
     );
   }
   async delete(userId: string, activityId: string) {
     this.require((await this.policy(userId)).manages);
     await this.repository.delete(activityId);
+  }
+
+  async externalLocations(userId: string, activityId: string) {
+    const policy = await this.policy(userId);
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    const activity = await this.repository.find(
+      activityId,
+      policy.canViewAll || !policy.canViewOwn ? undefined : userId,
+      policy.canViewAll || !policy.canViewAssigned ? undefined : userId,
+    );
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    return { locations: await this.repository.externalLocations(activityId) };
+  }
+
+  async attachExternalLocations(
+    userId: string,
+    activityId: string,
+    input: AttachExternalLocations,
+  ) {
+    const policy = await this.policy(userId);
+    this.require(policy.canUpdateAll || policy.has(P.updateOwn));
+    const activity = await this.repository.find(activityId);
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    const own = activity.creator.userId === userId;
+    this.require(policy.canUpdateAll || (own && policy.has(P.updateOwn)));
+    return {
+      locations: await this.repository.attachExternalLocations(
+        activityId,
+        input.locations,
+      ),
+    };
+  }
+
+  async removeExternalLocation(
+    userId: string,
+    activityId: string,
+    locationId: string,
+  ) {
+    const policy = await this.policy(userId);
+    this.require(policy.canUpdateAll || policy.has(P.updateOwn));
+    const activity = await this.repository.find(activityId);
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    const own = activity.creator.userId === userId;
+    this.require(policy.canUpdateAll || (own && policy.has(P.updateOwn)));
+    await this.repository.removeExternalLocation(activityId, locationId);
+  }
+
+  async activityPersonnel(userId: string, activityId: string) {
+    const policy = await this.policy(userId);
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    const activity = await this.repository.find(
+      activityId,
+      policy.canViewAll || !policy.canViewOwn ? undefined : userId,
+      policy.canViewAll || !policy.canViewAssigned ? undefined : userId,
+    );
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    return { users: await this.repository.activityPersonnel(activityId) };
+  }
+
+  async setActivityPersonnel(
+    userId: string,
+    activityId: string,
+    input: ActivityPersonnelInput,
+  ) {
+    const policy = await this.policy(userId);
+    this.require(policy.canUpdateAll || policy.has(P.updateOwn));
+    const activity = await this.repository.find(activityId);
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    const own = activity.creator.userId === userId;
+    this.require(policy.canUpdateAll || (own && policy.has(P.updateOwn)));
+    return { users: await this.repository.setActivityPersonnel(activityId, input) };
   }
 }

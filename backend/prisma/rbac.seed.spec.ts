@@ -126,7 +126,7 @@ describe('RBAC seed', () => {
       'reservation:delete_own',
     ];
     expect(db.links).toHaveLength(
-      FULL_PERMISSIONS_CATALOG.length + 1 + ownPermissionSlugs.length * 4,
+      FULL_PERMISSIONS_CATALOG.length + 1 + ownPermissionSlugs.length * 4 + 15,
     );
     expect(
       db.links.filter((link) => link.role_id === superuser.role_id),
@@ -143,7 +143,9 @@ describe('RBAC seed', () => {
     ]);
     for (const roleId of ['directive', 'lead', 'teacher', 'personal']) {
       const assignments = db.links.filter((link) => link.role_id === roleId);
-      expect(assignments).toHaveLength(ownPermissionSlugs.length);
+      expect(assignments).toHaveLength(
+        ownPermissionSlugs.length + (roleId === 'directive' ? 12 : roleId === 'lead' ? 3 : 0),
+      );
       for (const slug of ownPermissionSlugs) {
         const permission = db.permissions.find((item) => item.slug === slug)!;
         expect(assignments).toContainEqual({
@@ -212,5 +214,28 @@ describe('RBAC seed', () => {
       role_id: 'directive',
       permission_id: viewPermission.permission_id,
     });
+  });
+
+  it('asigna permisos de actividades y de ejes/objetivos según el rol', async () => {
+    const db = database();
+    db.roles.push(
+      { role_id: 'directive', name: 'DIRECTIVO' },
+      { role_id: 'lead', name: 'JEFE DE DEPARTAMENTO' },
+      { role_id: 'collaborator', name: 'COLABORADOR' },
+    );
+    await seedRbac(db.prisma);
+    const slugs = (roleId: string) => db.links
+      .filter(({ role_id }) => role_id === roleId)
+      .map(({ permission_id }) => db.permissions.find(({ permission_id: id }) => id === permission_id)?.slug)
+      .sort();
+    expect(slugs('directive')).toContain('activity:approve_all');
+    expect(slugs('directive')).toContain('axes:update');
+    expect(slugs('directive')).toContain('objectives:create');
+    expect(slugs('lead')).toEqual([
+      'activity:create_own', 'activity:update_own', 'activity:view_own',
+      'reservation:create_own', 'reservation:delete_own', 'reservation:update_own',
+      'reservation:view_all', 'reservation:view_own',
+    ].sort());
+    expect(slugs('collaborator')).toEqual(['activity:view_assigned', 'reservation:view_assigned']);
   });
 });

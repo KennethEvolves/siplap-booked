@@ -29,10 +29,14 @@ export class ReservationsPolicy {
     return this.manages || this.has(P.viewOwn);
   }
 
+  get canViewAssigned() {
+    return this.has(P.viewAssigned);
+  }
+
   actions(creatorId: string): ReservationActions {
     const own = creatorId === this.userId;
     return {
-      canView: this.canViewAll || (own && this.canViewOwn),
+      canView: this.canViewAll || (own && this.canViewOwn) || this.canViewAssigned,
       canUpdate: this.manages || (own && this.has(P.updateOwn)),
       canDelete: this.manages || (own && this.has(P.deleteOwn)),
     };

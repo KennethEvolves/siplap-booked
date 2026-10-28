@@ -2,21 +2,25 @@ import type {
   CreateReservation,
   Reservation,
   ReservationList,
+  ReservationSpaceOption,
   UpdateReservation,
 } from '@shared/contracts';
 
 export abstract class ReservationsRepository {
   abstract permissions(userId: string): Promise<string[]>;
+  abstract spaces(): Promise<ReservationSpaceOption[]>;
   abstract creators(): Promise<
     { userId: string; username: string | null; email: string }[]
   >;
   abstract list(
     query: ReservationList,
     creatorId?: string,
+    assignedActivityUserId?: string,
   ): Promise<{ reservations: Reservation[]; total: number }>;
   abstract find(
     reservationId: string,
     creatorId?: string,
+    assignedActivityUserId?: string,
   ): Promise<Reservation | null>;
   abstract create(
     input: CreateReservation & { creatorId: string },

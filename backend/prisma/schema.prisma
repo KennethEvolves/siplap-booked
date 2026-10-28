@@ -32,6 +32,30 @@ model activities {
   activity_requirements activity_requirements[]
   notifications         notifications[]
   reservations          reservations[]
+  activity_external_locations activity_external_locations[]
+}
+
+model external_locations {
+  location_id       String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  google_place_id   String                         @unique @db.VarChar(255)
+  name              String                         @db.VarChar(255)
+  formatted_address String?                        @db.VarChar(1000)
+  latitude          Decimal                        @db.Decimal(10, 7)
+  longitude         Decimal                        @db.Decimal(10, 7)
+  created_at        DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                       @default(now()) @db.Timestamptz(6)
+  activity_external_locations activity_external_locations[]
+}
+
+model activity_external_locations {
+  activity_id String             @db.Uuid
+  location_id String             @db.Uuid
+  created_at  DateTime           @default(now()) @db.Timestamptz(6)
+  activities  activities         @relation(fields: [activity_id], references: [activity_id], onDelete: Cascade, onUpdate: NoAction)
+  locations   external_locations @relation(fields: [location_id], references: [location_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([activity_id, location_id])
+  @@index([location_id])
 }
 
 model activity_personnel {
@@ -385,6 +409,8 @@ enum activity_type {
 }
 
 enum reservation_status {
+  pending
+  reserved
   active
   in_use
   cancelled

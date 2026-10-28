@@ -14,12 +14,20 @@ export const BASE_PERMISSIONS = [
   'activity:create_own',
   'activity:view_own',
   'activity:update_own',
+  'activity:view_assigned',
+  'axes:create',
+  'axes:read',
+  'axes:update',
+  'objectives:create',
+  'objectives:read',
+  'objectives:update',
   'reservation:manage',
   'reservation:view_all',
   'reservation:create_own',
   'reservation:view_own',
   'reservation:update_own',
   'reservation:delete_own',
+  'reservation:view_assigned',
 ] as const;
 
 export const FULL_PERMISSIONS_CATALOG = [
@@ -47,6 +55,15 @@ export const FULL_PERMISSIONS_CATALOG = [
   { slug: 'activity:create_own', name: 'CREAR ACTIVIDADES PROPIAS', description: 'Registrar actividades ordinarias y extraordinarias' },
   { slug: 'activity:view_own', name: 'CONSULTAR ACTIVIDADES PROPIAS', description: 'Ver el listado y agenda de actividades propias' },
   { slug: 'activity:update_own', name: 'EDITAR ACTIVIDADES PROPIAS', description: 'Modificar actividades propias no aprobadas' },
+  { slug: 'activity:view_assigned', name: 'CONSULTAR ACTIVIDADES ASIGNADAS', description: 'Ver actividades que solicitan servicios al usuario colaborador' },
+
+  // 5. Ejes de desarrollo y objetivos estratégicos
+  { slug: 'axes:create', name: 'CREAR EJES DE DESARROLLO', description: 'Registrar ejes institucionales de desarrollo' },
+  { slug: 'axes:read', name: 'CONSULTAR EJES DE DESARROLLO', description: 'Consultar el catálogo de ejes de desarrollo' },
+  { slug: 'axes:update', name: 'EDITAR EJES DE DESARROLLO', description: 'Modificar ejes institucionales de desarrollo' },
+  { slug: 'objectives:create', name: 'CREAR OBJETIVOS ESTRATÉGICOS', description: 'Registrar objetivos estratégicos' },
+  { slug: 'objectives:read', name: 'CONSULTAR OBJETIVOS ESTRATÉGICOS', description: 'Consultar objetivos estratégicos' },
+  { slug: 'objectives:update', name: 'EDITAR OBJETIVOS ESTRATÉGICOS', description: 'Modificar objetivos estratégicos' },
 
   // 5. Módulo de Reservaciones
   { slug: 'reservation:manage', name: 'GESTIONAR TODAS LAS RESERVACIONES', description: 'Crear, consultar, editar y eliminar cualquier reservación' },
@@ -55,6 +72,7 @@ export const FULL_PERMISSIONS_CATALOG = [
   { slug: 'reservation:view_own', name: 'CONSULTAR RESERVACIONES PROPIAS', description: 'Consultar reservaciones del usuario autenticado' },
   { slug: 'reservation:update_own', name: 'EDITAR RESERVACIONES PROPIAS', description: 'Modificar reservaciones propias' },
   { slug: 'reservation:delete_own', name: 'ELIMINAR RESERVACIONES PROPIAS', description: 'Eliminar reservaciones propias' },
+  { slug: 'reservation:view_assigned', name: 'CONSULTAR RESERVACIONES ASIGNADAS', description: 'Ver las reservaciones de actividades en las que el usuario colabora' },
 
   // 6. Módulo de Espacios
   { slug: 'spaces:create', name: 'CREAR ESPACIOS', description: 'Registrar recintos, auditorios y salas' },
@@ -275,6 +293,50 @@ export async function seedRbac(prisma: PrismaClient) {
             },
           });
         }
+      }
+    }
+  }
+
+  const rolePermissionGroups = [
+    {
+      aliases: ['DIRECTIVE', 'directive', 'DIRECTIVO'],
+      slugs: [
+        'activity:create_own',
+        'activity:view_own',
+        'activity:update_own',
+        'activity:view_all',
+        'activity:update_all',
+        'activity:approve_all',
+        'axes:create', 'axes:read', 'axes:update',
+        'objectives:create', 'objectives:read', 'objectives:update',
+      ],
+    },
+    {
+      aliases: ['LEAD', 'lead', 'JEFE DE DEPARTAMENTO'],
+      slugs: ['activity:create_own', 'activity:view_own', 'activity:update_own'],
+    },
+    {
+      aliases: ['COLLABORATOR', 'collaborator', 'COLABORADOR'],
+      slugs: ['activity:view_assigned', 'reservation:view_assigned'],
+    },
+  ];
+  for (const group of rolePermissionGroups) {
+    let role = null;
+    for (const name of group.aliases) {
+      role = await prisma.roles.findFirst({ where: { name } });
+      if (role) break;
+    }
+    if (!role) continue;
+    for (const slug of group.slugs) {
+      const permission = await prisma.permissions.findFirst({ where: { slug } });
+      if (!permission) continue;
+      const existing = await prisma.role_permissions.findFirst({
+        where: { role_id: role.role_id, permission_id: permission.permission_id },
+      });
+      if (!existing) {
+        await prisma.role_permissions.create({
+          data: { role_id: role.role_id, permission_id: permission.permission_id },
+        });
       }
     }
   }

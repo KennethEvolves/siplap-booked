@@ -7,6 +7,11 @@ import { UsersModule } from './users/infrastructure/users.module.js';
 import { RolesModule } from './roles/infrastructure/roles.module.js';
 import { PermissionsModule } from './permissions/infrastructure/permissions.module.js';
 import { ReservationsModule } from './reservations/infrastructure/reservations.module.js';
+<<<<<<< HEAD
+=======
+import { PlanningModule } from './planning/infrastructure/planning.module.js';
+import { NotificationsModule } from './notifications/infrastructure/notifications.module.js';
+>>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
 import { AppController } from './app.controller.js';
 
@@ -19,6 +24,11 @@ import { AppController } from './app.controller.js';
     RolesModule,
     PermissionsModule,
     ReservationsModule,
+<<<<<<< HEAD
+=======
+    PlanningModule,
+    NotificationsModule,
+>>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   ],
 
   controllers: [

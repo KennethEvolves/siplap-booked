@@ -8,6 +8,7 @@ import {
   type Reservation,
   type ReservationList,
   type UpdateReservation,
+  type ReservationSpaceOption,
 } from '@shared/contracts';
 import { ReservationsPolicy } from '../domain/reservations.policy.js';
 import { ReservationsRepository } from '../domain/reservations.repository.js';
@@ -38,11 +39,12 @@ export class ReservationsUseCase {
 
   async list(userId: string, query: ReservationList) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn);
-    const result = await this.repository.list(
-      query,
-      policy.canViewAll ? undefined : userId,
-    );
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    const creatorId = policy.canViewAll || !policy.canViewOwn ? undefined : userId;
+    const assignedActivityUserId = policy.canViewAll || !policy.canViewAssigned ? undefined : userId;
+    const result = assignedActivityUserId
+      ? await this.repository.list(query, creatorId, assignedActivityUserId)
+      : await this.repository.list(query, creatorId);
     return {
       ...result,
       reservations: result.reservations.map((item) =>
@@ -52,6 +54,8 @@ export class ReservationsUseCase {
         canCreate: policy.canCreate,
         canManage: policy.manages,
         canViewAll: policy.canViewAll,
+        canViewOwn: policy.canViewAll || policy.canViewOwn,
+        canViewAssigned: policy.canViewAssigned,
       },
       ...query,
     };
@@ -63,12 +67,19 @@ export class ReservationsUseCase {
     return this.repository.creators();
   }
 
+  async spaces(userId: string): Promise<{ spaces: ReservationSpaceOption[] }> {
+    const policy = await this.policy(userId);
+    this.require(policy.canCreate);
+    return { spaces: await this.repository.spaces() };
+  }
+
   async get(userId: string, reservationId: string) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn);
+    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
     const reservation = await this.repository.find(
       reservationId,
-      policy.canViewAll ? undefined : userId,
+      policy.canViewAll || !policy.canViewOwn ? undefined : userId,
+      policy.canViewAll || !policy.canViewAssigned ? undefined : userId,
     );
     if (!reservation)
       throw new NotFoundException('Reservación no encontrada');
@@ -95,6 +106,7 @@ export class ReservationsUseCase {
     const policy = await this.policy(userId);
     const manageAll = policy.manages;
     this.require(manageAll || policy.has(P.updateOwn));
+    if (input.status !== undefined) this.require(manageAll);
     return this.present(
       await this.repository.update(
         reservationId,

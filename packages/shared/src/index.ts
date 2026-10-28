@@ -1,6 +1,12 @@
 import { z } from 'zod';
 export * from './activities.js';
 export * from './reservations.js';
+<<<<<<< HEAD
+=======
+export * from './external-locations.js';
+export * from './planning.js';
+export * from './notifications.js';
+>>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
 export const uuidSchema = z.uuid();
 const description = z.string().trim().max(255);

@@ -398,6 +398,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   activities: 'activities',
+  external_locations: 'external_locations',
+  activity_external_locations: 'activity_external_locations',
   activity_personnel: 'activity_personnel',
   activity_report_evidences: 'activity_report_evidences',
   activity_reports: 'activity_reports',
@@ -442,7 +444,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "activities" | "activity_personnel" | "activity_report_evidences" | "activity_reports" | "activity_requirements" | "axis" | "departments" | "flight_requirements_meta" | "item_catalogs" | "lodging_requirements_meta" | "notifications" | "objectives" | "package_items" | "packages" | "permissions" | "profiles" | "requirement_items" | "reservation_personnel" | "reservation_resources" | "reservation_spaces" | "reservations" | "resources" | "role_permissions" | "roles" | "space_fixed_resources" | "spaces" | "user_roles" | "user_statuses" | "user_types" | "users"
+    modelProps: "activities" | "external_locations" | "activity_external_locations" | "activity_personnel" | "activity_report_evidences" | "activity_reports" | "activity_requirements" | "axis" | "departments" | "flight_requirements_meta" | "item_catalogs" | "lodging_requirements_meta" | "notifications" | "objectives" | "package_items" | "packages" | "permissions" | "profiles" | "requirement_items" | "reservation_personnel" | "reservation_resources" | "reservation_spaces" | "reservations" | "resources" | "role_permissions" | "roles" | "space_fixed_resources" | "spaces" | "user_roles" | "user_statuses" | "user_types" | "users"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -517,6 +519,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.activitiesCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ActivitiesCountAggregateOutputType> | number
+        }
+      }
+    }
+    external_locations: {
+      payload: Prisma.$external_locationsPayload<ExtArgs>
+      fields: Prisma.external_locationsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.external_locationsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.external_locationsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>
+        }
+        findFirst: {
+          args: Prisma.external_locationsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.external_locationsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>
+        }
+        findMany: {
+          args: Prisma.external_locationsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>[]
+        }
+        create: {
+          args: Prisma.external_locationsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>
+        }
+        createMany: {
+          args: Prisma.external_locationsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.external_locationsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>[]
+        }
+        delete: {
+          args: Prisma.external_locationsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>
+        }
+        update: {
+          args: Prisma.external_locationsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>
+        }
+        deleteMany: {
+          args: Prisma.external_locationsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.external_locationsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.external_locationsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>[]
+        }
+        upsert: {
+          args: Prisma.external_locationsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$external_locationsPayload>
+        }
+        aggregate: {
+          args: Prisma.External_locationsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateExternal_locations>
+        }
+        groupBy: {
+          args: Prisma.external_locationsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.External_locationsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.external_locationsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.External_locationsCountAggregateOutputType> | number
+        }
+      }
+    }
+    activity_external_locations: {
+      payload: Prisma.$activity_external_locationsPayload<ExtArgs>
+      fields: Prisma.activity_external_locationsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.activity_external_locationsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.activity_external_locationsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>
+        }
+        findFirst: {
+          args: Prisma.activity_external_locationsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.activity_external_locationsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>
+        }
+        findMany: {
+          args: Prisma.activity_external_locationsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>[]
+        }
+        create: {
+          args: Prisma.activity_external_locationsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>
+        }
+        createMany: {
+          args: Prisma.activity_external_locationsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.activity_external_locationsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>[]
+        }
+        delete: {
+          args: Prisma.activity_external_locationsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>
+        }
+        update: {
+          args: Prisma.activity_external_locationsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>
+        }
+        deleteMany: {
+          args: Prisma.activity_external_locationsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.activity_external_locationsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.activity_external_locationsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>[]
+        }
+        upsert: {
+          args: Prisma.activity_external_locationsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$activity_external_locationsPayload>
+        }
+        aggregate: {
+          args: Prisma.Activity_external_locationsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateActivity_external_locations>
+        }
+        groupBy: {
+          args: Prisma.activity_external_locationsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Activity_external_locationsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.activity_external_locationsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Activity_external_locationsCountAggregateOutputType> | number
         }
       }
     }
@@ -2728,6 +2878,29 @@ export const ActivitiesScalarFieldEnum = {
 export type ActivitiesScalarFieldEnum = (typeof ActivitiesScalarFieldEnum)[keyof typeof ActivitiesScalarFieldEnum]
 
 
+export const External_locationsScalarFieldEnum = {
+  location_id: 'location_id',
+  google_place_id: 'google_place_id',
+  name: 'name',
+  formatted_address: 'formatted_address',
+  latitude: 'latitude',
+  longitude: 'longitude',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type External_locationsScalarFieldEnum = (typeof External_locationsScalarFieldEnum)[keyof typeof External_locationsScalarFieldEnum]
+
+
+export const Activity_external_locationsScalarFieldEnum = {
+  activity_id: 'activity_id',
+  location_id: 'location_id',
+  created_at: 'created_at'
+} as const
+
+export type Activity_external_locationsScalarFieldEnum = (typeof Activity_external_locationsScalarFieldEnum)[keyof typeof Activity_external_locationsScalarFieldEnum]
+
+
 export const Activity_personnelScalarFieldEnum = {
   activity_id: 'activity_id',
   user_id: 'user_id'
@@ -3097,161 +3270,134 @@ export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
  * Reference to a field of type 'String'
  */
 export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String'>
-    
 
 
 /**
  * Reference to a field of type 'String[]'
  */
 export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>
-    
 
 
 /**
  * Reference to a field of type 'activity_type'
  */
 export type Enumactivity_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_type'>
-    
 
 
 /**
  * Reference to a field of type 'activity_type[]'
  */
 export type ListEnumactivity_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_type[]'>
-    
 
 
 /**
  * Reference to a field of type 'DateTime'
  */
 export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
-    
 
 
 /**
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
-    
 
 
 /**
  * Reference to a field of type 'Boolean'
  */
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
-    
 
 
 /**
  * Reference to a field of type 'activity_status'
  */
 export type Enumactivity_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_status'>
-    
 
 
 /**
  * Reference to a field of type 'activity_status[]'
  */
 export type ListEnumactivity_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_status[]'>
-    
 
 
 /**
  * Reference to a field of type 'Decimal'
  */
 export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
-    
-
-
-/**
  * Reference to a field of type 'Decimal[]'
- */
 export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
-    
 
 
 /**
  * Reference to a field of type 'Int'
  */
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
 
 
 /**
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
-    
 
 
 /**
  * Reference to a field of type 'reservation_status'
  */
 export type Enumreservation_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'reservation_status'>
-    
 
 
 /**
  * Reference to a field of type 'reservation_status[]'
  */
 export type ListEnumreservation_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'reservation_status[]'>
-    
 
 
 /**
  * Reference to a field of type 'resource_type'
  */
 export type Enumresource_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_type'>
-    
 
 
 /**
  * Reference to a field of type 'resource_type[]'
  */
 export type ListEnumresource_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_type[]'>
-    
 
 
 /**
  * Reference to a field of type 'resource_status'
  */
 export type Enumresource_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_status'>
-    
 
 
 /**
  * Reference to a field of type 'resource_status[]'
  */
 export type ListEnumresource_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_status[]'>
-    
 
 
 /**
  * Reference to a field of type 'space_status'
  */
 export type Enumspace_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'space_status'>
-    
 
 
 /**
  * Reference to a field of type 'space_status[]'
  */
 export type ListEnumspace_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'space_status[]'>
-    
 
 
 /**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
 
 
 /**
  * Reference to a field of type 'Float[]'
  */
 export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
-    
 
 /**
  * Batch Payload for updateMany & deleteMany & createMany
@@ -3405,6 +3551,8 @@ export interface PrismaClientOptionsWithAdapter extends PrismaClientBaseOptions 
 export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaClientOptionsWithAdapter
 export type GlobalOmitConfig = {
   activities?: Prisma.activitiesOmit
+  external_locations?: Prisma.external_locationsOmit
+  activity_external_locations?: Prisma.activity_external_locationsOmit
   activity_personnel?: Prisma.activity_personnelOmit
   activity_report_evidences?: Prisma.activity_report_evidencesOmit
   activity_reports?: Prisma.activity_reportsOmit

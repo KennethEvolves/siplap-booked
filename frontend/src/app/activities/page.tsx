@@ -30,7 +30,6 @@ export default function ActivitiesPage() {
   const [activities, setActivities] = useState<BackendActivity[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
-  // Pestañas y filtros
   const [activeTab, setActiveTab] = useState<'mine' | 'all'>('mine');
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
   
@@ -46,9 +45,6 @@ export default function ActivitiesPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // =========================================================================
-  // MATRIZ RBAC (Evaluación granular basada en permisos de sesión)
-  // =========================================================================
   const isSuperUser = useMemo(() => {
     return permissions.includes('manage:all') || permissions.includes('activity:manage');
   }, [permissions]);
@@ -73,10 +69,9 @@ export default function ActivitiesPage() {
     return permissions.includes('activity:update_own');
   }, [permissions]);
 
-  // Si puede ver todo, se habilitan las pestañas para alternar
+  
   const canShowAllTabs = canViewAll || isSuperUser;
 
-  // Comprobar si el usuario puede editar una actividad específica
   const canEditActivity = (activity: BackendActivity) => {
     if (canEditAll) return true;
     if (canEditOwn) {
@@ -88,16 +83,12 @@ export default function ActivitiesPage() {
     return false;
   };
 
-  // Nivel de alcance institucional para la cabecera
   const roleScope = useMemo<'superuser' | 'directive' | 'lead'>(() => {
     if (isSuperUser) return 'superuser';
     if (canApprove || canViewAll) return 'directive';
     return 'lead';
   }, [isSuperUser, canApprove, canViewAll]);
 
-  // =========================================================================
-  // CARGA DE DATOS
-  // =========================================================================
   const refreshData = async () => {
     try {
       setLoading(true);
@@ -130,7 +121,6 @@ export default function ActivitiesPage() {
       if (actRes?.activities && Array.isArray(actRes.activities)) {
         let list = actRes.activities;
 
-        // Si el rol operativo no tiene permiso de ver todo, filtramos localmente
         if (!hasAccessToAll) {
           list = list.filter((act) => {
             const matchesId = userId && (act.creator?.userId === userId || (act as any).creatorId === userId);
@@ -152,9 +142,6 @@ export default function ActivitiesPage() {
     refreshData();
   }, []);
 
-  // =========================================================================
-  // CREACIÓN Y EDICIÓN
-  // =========================================================================
   const handleSaveActivity = async (
     data: { 
       title: string; 
@@ -234,11 +221,7 @@ export default function ActivitiesPage() {
     }
   };
 
-  // =========================================================================
-  // FILTRADO DINÁMICO CORREGIDO
-  // =========================================================================
   const filteredActivities = activities.filter((activity) => {
-    // En la pestaña "Mis Actividades", comparamos de forma estricta la autoría del registro
     if (canShowAllTabs && activeTab === 'mine') {
       const matchesUserId =
         currentUserId &&

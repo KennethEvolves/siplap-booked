@@ -1,4 +1,3 @@
-// src/app/admin/page.tsx
 'use client';
 
 import { Suspense } from 'react';
@@ -127,3 +126,4 @@ function AdminPanel() {
     </div>
   );
 }
+  

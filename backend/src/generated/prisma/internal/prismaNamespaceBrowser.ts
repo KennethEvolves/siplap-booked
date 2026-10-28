@@ -52,6 +52,8 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   activities: 'activities',
+  external_locations: 'external_locations',
+  activity_external_locations: 'activity_external_locations',
   activity_personnel: 'activity_personnel',
   activity_report_evidences: 'activity_report_evidences',
   activity_reports: 'activity_reports',
@@ -120,6 +122,29 @@ export const ActivitiesScalarFieldEnum = {
 } as const
 
 export type ActivitiesScalarFieldEnum = (typeof ActivitiesScalarFieldEnum)[keyof typeof ActivitiesScalarFieldEnum]
+
+
+export const External_locationsScalarFieldEnum = {
+  location_id: 'location_id',
+  google_place_id: 'google_place_id',
+  name: 'name',
+  formatted_address: 'formatted_address',
+  latitude: 'latitude',
+  longitude: 'longitude',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type External_locationsScalarFieldEnum = (typeof External_locationsScalarFieldEnum)[keyof typeof External_locationsScalarFieldEnum]
+
+
+export const Activity_external_locationsScalarFieldEnum = {
+  activity_id: 'activity_id',
+  location_id: 'location_id',
+  created_at: 'created_at'
+} as const
+
+export type Activity_external_locationsScalarFieldEnum = (typeof Activity_external_locationsScalarFieldEnum)[keyof typeof Activity_external_locationsScalarFieldEnum]
 
 
 export const Activity_personnelScalarFieldEnum = {

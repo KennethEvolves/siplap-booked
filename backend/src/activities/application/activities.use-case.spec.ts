@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   ACTIVITY_PERMISSIONS as P,
+  attachExternalLocationsSchema,
   approveActivitySchema,
   createActivitySchema,
   updateActivitySchema,
@@ -131,6 +132,36 @@ describe('Permisos de actividades', () => {
     expect(approveActivitySchema.safeParse({ status: 'pending' }).success).toBe(
       false,
     );
+<<<<<<< HEAD
+=======
+    expect(
+      approveActivitySchema.safeParse({
+        direction: 'planning',
+        status: 'approved',
+      }).success,
+    ).toBe(true);
+    const location = {
+      googlePlaceId: 'ChIJ123',
+      name: 'Auditorio externo',
+      formattedAddress: 'Calle 1',
+      latitude: 19.4326,
+      longitude: -99.1332,
+    };
+    expect(
+      attachExternalLocationsSchema.safeParse({ locations: [location] })
+        .success,
+    ).toBe(true);
+    expect(
+      attachExternalLocationsSchema.safeParse({
+        locations: [{ ...location, latitude: 91 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      attachExternalLocationsSchema.safeParse({
+        locations: [location, location],
+      }).success,
+    ).toBe(false);
+>>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   });
 
   it('solo SUPERUSUARIO puede reasignar una actividad y valida al nuevo responsable', async () => {

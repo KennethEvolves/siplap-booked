@@ -193,6 +193,28 @@ export type StringFilter<$PrismaModel = never> = {
   not?: Prisma.NestedStringFilter<$PrismaModel> | string
 }
 
+export type DecimalFilter<$PrismaModel = never> = {
+  equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
+  notIn?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
+  lt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  lte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  gt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  gte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedDecimalFilter<$PrismaModel> | runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type DateTimeFilter<$PrismaModel = never> = {
+  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedDateTimeFilter<$PrismaModel> | Date | string
+}
+
 export type StringWithAggregatesFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -211,42 +233,6 @@ export type StringWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedStringFilter<$PrismaModel>
 }
 
-export type DateTimeFilter<$PrismaModel = never> = {
-  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedDateTimeFilter<$PrismaModel> | Date | string
-}
-
-export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedDateTimeFilter<$PrismaModel>
-  _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
-}
-
-export type DecimalFilter<$PrismaModel = never> = {
-  equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
-  notIn?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
-  lt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  lte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  gt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  gte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedDecimalFilter<$PrismaModel> | runtime.Decimal | runtime.DecimalJsLike | number | string
-}
-
 export type DecimalWithAggregatesFilter<$PrismaModel = never> = {
   equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
   in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
@@ -261,6 +247,20 @@ export type DecimalWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedDecimalFilter<$PrismaModel>
   _min?: Prisma.NestedDecimalFilter<$PrismaModel>
   _max?: Prisma.NestedDecimalFilter<$PrismaModel>
+}
+
+export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedDateTimeFilter<$PrismaModel>
+  _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
 }
 
 export type IntFilter<$PrismaModel = never> = {
@@ -614,6 +614,28 @@ export type NestedUuidNullableWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedStringNullableFilter<$PrismaModel>
 }
 
+export type NestedDecimalFilter<$PrismaModel = never> = {
+  equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
+  notIn?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
+  lt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  lte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  gt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  gte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedDecimalFilter<$PrismaModel> | runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type NestedDateTimeFilter<$PrismaModel = never> = {
+  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedDateTimeFilter<$PrismaModel> | Date | string
+}
+
 export type NestedStringWithAggregatesFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -631,42 +653,6 @@ export type NestedStringWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedStringFilter<$PrismaModel>
 }
 
-export type NestedDateTimeFilter<$PrismaModel = never> = {
-  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedDateTimeFilter<$PrismaModel> | Date | string
-}
-
-export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
-  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedDateTimeFilter<$PrismaModel>
-  _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
-}
-
-export type NestedDecimalFilter<$PrismaModel = never> = {
-  equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
-  notIn?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
-  lt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  lte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  gt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  gte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedDecimalFilter<$PrismaModel> | runtime.Decimal | runtime.DecimalJsLike | number | string
-}
-
 export type NestedDecimalWithAggregatesFilter<$PrismaModel = never> = {
   equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
   in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
@@ -681,6 +667,20 @@ export type NestedDecimalWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedDecimalFilter<$PrismaModel>
   _min?: Prisma.NestedDecimalFilter<$PrismaModel>
   _max?: Prisma.NestedDecimalFilter<$PrismaModel>
+}
+
+export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  in?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  notIn?: Date[] | string[] | Prisma.ListDateTimeFieldRefInput<$PrismaModel>
+  lt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  lte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedDateTimeFilter<$PrismaModel>
+  _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
 }
 
 export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {

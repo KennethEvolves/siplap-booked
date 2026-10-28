@@ -9,6 +9,8 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/activities.js'
+export type * from './models/external_locations.js'
+export type * from './models/activity_external_locations.js'
 export type * from './models/activity_personnel.js'
 export type * from './models/activity_report_evidences.js'
 export type * from './models/activity_reports.js'

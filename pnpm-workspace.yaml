@@ -1,0 +1,14 @@
+packages:
+  - "backend"
+  - "frontend"
+  - "packages/*"
+nodeVersion: 24.20.0
+engineStrict: true
+allowBuilds:
+  '@prisma/engines': true
+  bcrypt: true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+  unrs-resolver: true
+  workerd: true

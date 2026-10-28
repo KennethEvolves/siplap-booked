@@ -3324,7 +3324,9 @@ export type ListEnumactivity_statusFieldRefInput<$PrismaModel> = FieldRefInputTy
  * Reference to a field of type 'Decimal'
  */
 export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
+/**
  * Reference to a field of type 'Decimal[]'
+ */
 export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
 
 

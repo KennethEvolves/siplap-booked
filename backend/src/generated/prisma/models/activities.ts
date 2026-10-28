@@ -285,10 +285,7 @@ export type activitiesWhereInput = {
   activity_requirements?: Prisma.Activity_requirementsListRelationFilter
   notifications?: Prisma.NotificationsListRelationFilter
   reservations?: Prisma.ReservationsListRelationFilter
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.Activity_external_locationsListRelationFilter
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesOrderByWithRelationInput = {
@@ -316,10 +313,7 @@ export type activitiesOrderByWithRelationInput = {
   activity_requirements?: Prisma.activity_requirementsOrderByRelationAggregateInput
   notifications?: Prisma.notificationsOrderByRelationAggregateInput
   reservations?: Prisma.reservationsOrderByRelationAggregateInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsOrderByRelationAggregateInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesWhereUniqueInput = Prisma.AtLeast<{
@@ -350,10 +344,7 @@ export type activitiesWhereUniqueInput = Prisma.AtLeast<{
   activity_requirements?: Prisma.Activity_requirementsListRelationFilter
   notifications?: Prisma.NotificationsListRelationFilter
   reservations?: Prisma.ReservationsListRelationFilter
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.Activity_external_locationsListRelationFilter
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }, "activity_id">
 
 export type activitiesOrderByWithAggregationInput = {
@@ -425,10 +416,7 @@ export type activitiesCreateInput = {
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateInput = {
@@ -454,10 +442,7 @@ export type activitiesUncheckedCreateInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUpdateInput = {
@@ -483,10 +468,7 @@ export type activitiesUpdateInput = {
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateInput = {
@@ -512,10 +494,7 @@ export type activitiesUncheckedUpdateInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateManyInput = {
@@ -680,8 +659,6 @@ export type Enumactivity_statusFieldUpdateOperationsInput = {
   set?: $Enums.activity_status
 }
 
-<<<<<<< HEAD
-=======
 export type activitiesCreateNestedOneWithoutActivity_external_locationsInput = {
   create?: Prisma.XOR<Prisma.activitiesCreateWithoutActivity_external_locationsInput, Prisma.activitiesUncheckedCreateWithoutActivity_external_locationsInput>
   connectOrCreate?: Prisma.activitiesCreateOrConnectWithoutActivity_external_locationsInput
@@ -696,7 +673,6 @@ export type activitiesUpdateOneRequiredWithoutActivity_external_locationsNestedI
   update?: Prisma.XOR<Prisma.XOR<Prisma.activitiesUpdateToOneWithWhereWithoutActivity_external_locationsInput, Prisma.activitiesUpdateWithoutActivity_external_locationsInput>, Prisma.activitiesUncheckedUpdateWithoutActivity_external_locationsInput>
 }
 
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 export type activitiesCreateNestedOneWithoutActivity_personnelInput = {
   create?: Prisma.XOR<Prisma.activitiesCreateWithoutActivity_personnelInput, Prisma.activitiesUncheckedCreateWithoutActivity_personnelInput>
   connectOrCreate?: Prisma.activitiesCreateOrConnectWithoutActivity_personnelInput
@@ -855,8 +831,6 @@ export type activitiesUncheckedUpdateManyWithoutUsersNestedInput = {
   deleteMany?: Prisma.activitiesScalarWhereInput | Prisma.activitiesScalarWhereInput[]
 }
 
-<<<<<<< HEAD
-=======
 export type activitiesCreateWithoutActivity_external_locationsInput = {
   activity_id?: string
   title?: string | null
@@ -973,7 +947,6 @@ export type activitiesUncheckedUpdateWithoutActivity_external_locationsInput = {
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
 }
 
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 export type activitiesCreateWithoutActivity_personnelInput = {
   activity_id?: string
   title?: string | null
@@ -996,10 +969,7 @@ export type activitiesCreateWithoutActivity_personnelInput = {
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutActivity_personnelInput = {
@@ -1024,10 +994,7 @@ export type activitiesUncheckedCreateWithoutActivity_personnelInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutActivity_personnelInput = {
@@ -1068,10 +1035,7 @@ export type activitiesUpdateWithoutActivity_personnelInput = {
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutActivity_personnelInput = {
@@ -1096,10 +1060,7 @@ export type activitiesUncheckedUpdateWithoutActivity_personnelInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateWithoutActivity_reportsInput = {
@@ -1124,10 +1085,7 @@ export type activitiesCreateWithoutActivity_reportsInput = {
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutActivity_reportsInput = {
@@ -1152,10 +1110,7 @@ export type activitiesUncheckedCreateWithoutActivity_reportsInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutActivity_reportsInput = {
@@ -1196,10 +1151,7 @@ export type activitiesUpdateWithoutActivity_reportsInput = {
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutActivity_reportsInput = {
@@ -1224,10 +1176,7 @@ export type activitiesUncheckedUpdateWithoutActivity_reportsInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateWithoutActivity_requirementsInput = {
@@ -1252,10 +1201,7 @@ export type activitiesCreateWithoutActivity_requirementsInput = {
   activity_reports?: Prisma.activity_reportsCreateNestedOneWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutActivity_requirementsInput = {
@@ -1280,10 +1226,7 @@ export type activitiesUncheckedCreateWithoutActivity_requirementsInput = {
   activity_reports?: Prisma.activity_reportsUncheckedCreateNestedOneWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutActivity_requirementsInput = {
@@ -1324,10 +1267,7 @@ export type activitiesUpdateWithoutActivity_requirementsInput = {
   activity_reports?: Prisma.activity_reportsUpdateOneWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutActivity_requirementsInput = {
@@ -1352,10 +1292,7 @@ export type activitiesUncheckedUpdateWithoutActivity_requirementsInput = {
   activity_reports?: Prisma.activity_reportsUncheckedUpdateOneWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateWithoutNotificationsInput = {
@@ -1380,10 +1317,7 @@ export type activitiesCreateWithoutNotificationsInput = {
   activity_reports?: Prisma.activity_reportsCreateNestedOneWithoutActivitiesInput
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutNotificationsInput = {
@@ -1408,10 +1342,7 @@ export type activitiesUncheckedCreateWithoutNotificationsInput = {
   activity_reports?: Prisma.activity_reportsUncheckedCreateNestedOneWithoutActivitiesInput
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutNotificationsInput = {
@@ -1452,10 +1383,7 @@ export type activitiesUpdateWithoutNotificationsInput = {
   activity_reports?: Prisma.activity_reportsUpdateOneWithoutActivitiesNestedInput
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutNotificationsInput = {
@@ -1480,10 +1408,7 @@ export type activitiesUncheckedUpdateWithoutNotificationsInput = {
   activity_reports?: Prisma.activity_reportsUncheckedUpdateOneWithoutActivitiesNestedInput
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateWithoutObjectivesInput = {
@@ -1508,10 +1433,7 @@ export type activitiesCreateWithoutObjectivesInput = {
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutObjectivesInput = {
@@ -1536,10 +1458,7 @@ export type activitiesUncheckedCreateWithoutObjectivesInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutObjectivesInput = {
@@ -1613,10 +1532,7 @@ export type activitiesCreateWithoutReservationsInput = {
   activity_reports?: Prisma.activity_reportsCreateNestedOneWithoutActivitiesInput
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutReservationsInput = {
@@ -1641,10 +1557,7 @@ export type activitiesUncheckedCreateWithoutReservationsInput = {
   activity_reports?: Prisma.activity_reportsUncheckedCreateNestedOneWithoutActivitiesInput
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutReservationsInput = {
@@ -1685,10 +1598,7 @@ export type activitiesUpdateWithoutReservationsInput = {
   activity_reports?: Prisma.activity_reportsUpdateOneWithoutActivitiesNestedInput
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutReservationsInput = {
@@ -1713,10 +1623,7 @@ export type activitiesUncheckedUpdateWithoutReservationsInput = {
   activity_reports?: Prisma.activity_reportsUncheckedUpdateOneWithoutActivitiesNestedInput
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateWithoutUsersInput = {
@@ -1741,10 +1648,7 @@ export type activitiesCreateWithoutUsersInput = {
   activity_requirements?: Prisma.activity_requirementsCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedCreateWithoutUsersInput = {
@@ -1769,10 +1673,7 @@ export type activitiesUncheckedCreateWithoutUsersInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedCreateNestedManyWithoutActivitiesInput
   notifications?: Prisma.notificationsUncheckedCreateNestedManyWithoutActivitiesInput
   reservations?: Prisma.reservationsUncheckedCreateNestedManyWithoutActivitiesInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedCreateNestedManyWithoutActivitiesInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesCreateOrConnectWithoutUsersInput = {
@@ -1842,10 +1743,7 @@ export type activitiesUpdateWithoutObjectivesInput = {
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutObjectivesInput = {
@@ -1870,10 +1768,7 @@ export type activitiesUncheckedUpdateWithoutObjectivesInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateManyWithoutObjectivesInput = {
@@ -1936,10 +1831,7 @@ export type activitiesUpdateWithoutUsersInput = {
   activity_requirements?: Prisma.activity_requirementsUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateWithoutUsersInput = {
@@ -1964,10 +1856,7 @@ export type activitiesUncheckedUpdateWithoutUsersInput = {
   activity_requirements?: Prisma.activity_requirementsUncheckedUpdateManyWithoutActivitiesNestedInput
   notifications?: Prisma.notificationsUncheckedUpdateManyWithoutActivitiesNestedInput
   reservations?: Prisma.reservationsUncheckedUpdateManyWithoutActivitiesNestedInput
-<<<<<<< HEAD
-=======
   activity_external_locations?: Prisma.activity_external_locationsUncheckedUpdateManyWithoutActivitiesNestedInput
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type activitiesUncheckedUpdateManyWithoutUsersInput = {
@@ -1999,10 +1888,7 @@ export type ActivitiesCountOutputType = {
   activity_requirements: number
   notifications: number
   reservations: number
-<<<<<<< HEAD
-=======
   activity_external_locations: number
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 export type ActivitiesCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2010,10 +1896,7 @@ export type ActivitiesCountOutputTypeSelect<ExtArgs extends runtime.Types.Extens
   activity_requirements?: boolean | ActivitiesCountOutputTypeCountActivity_requirementsArgs
   notifications?: boolean | ActivitiesCountOutputTypeCountNotificationsArgs
   reservations?: boolean | ActivitiesCountOutputTypeCountReservationsArgs
-<<<<<<< HEAD
-=======
   activity_external_locations?: boolean | ActivitiesCountOutputTypeCountActivity_external_locationsArgs
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 /**
@@ -2054,8 +1937,6 @@ export type ActivitiesCountOutputTypeCountReservationsArgs<ExtArgs extends runti
   where?: Prisma.reservationsWhereInput
 }
 
-<<<<<<< HEAD
-=======
 /**
  * ActivitiesCountOutputType without action
  */
@@ -2063,7 +1944,6 @@ export type ActivitiesCountOutputTypeCountActivity_external_locationsArgs<ExtArg
   where?: Prisma.activity_external_locationsWhereInput
 }
 
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
 export type activitiesSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   activity_id?: boolean
@@ -2090,10 +1970,7 @@ export type activitiesSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   activity_requirements?: boolean | Prisma.activities$activity_requirementsArgs<ExtArgs>
   notifications?: boolean | Prisma.activities$notificationsArgs<ExtArgs>
   reservations?: boolean | Prisma.activities$reservationsArgs<ExtArgs>
-<<<<<<< HEAD
-=======
   activity_external_locations?: boolean | Prisma.activities$activity_external_locationsArgs<ExtArgs>
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   _count?: boolean | Prisma.ActivitiesCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["activities"]>
 
@@ -2170,10 +2047,7 @@ export type activitiesInclude<ExtArgs extends runtime.Types.Extensions.InternalA
   activity_requirements?: boolean | Prisma.activities$activity_requirementsArgs<ExtArgs>
   notifications?: boolean | Prisma.activities$notificationsArgs<ExtArgs>
   reservations?: boolean | Prisma.activities$reservationsArgs<ExtArgs>
-<<<<<<< HEAD
-=======
   activity_external_locations?: boolean | Prisma.activities$activity_external_locationsArgs<ExtArgs>
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   _count?: boolean | Prisma.ActivitiesCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type activitiesIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2195,10 +2069,7 @@ export type $activitiesPayload<ExtArgs extends runtime.Types.Extensions.Internal
     activity_requirements: Prisma.$activity_requirementsPayload<ExtArgs>[]
     notifications: Prisma.$notificationsPayload<ExtArgs>[]
     reservations: Prisma.$reservationsPayload<ExtArgs>[]
-<<<<<<< HEAD
-=======
     activity_external_locations: Prisma.$activity_external_locationsPayload<ExtArgs>[]
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     activity_id: string
@@ -2619,10 +2490,7 @@ export interface Prisma__activitiesClient<T, Null = never, ExtArgs extends runti
   activity_requirements<T extends Prisma.activities$activity_requirementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.activities$activity_requirementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$activity_requirementsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notifications<T extends Prisma.activities$notificationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.activities$notificationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$notificationsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   reservations<T extends Prisma.activities$reservationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.activities$reservationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$reservationsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-<<<<<<< HEAD
-=======
   activity_external_locations<T extends Prisma.activities$activity_external_locationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.activities$activity_external_locationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$activity_external_locationsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2670,11 +2538,6 @@ export interface activitiesFieldRefs {
   readonly updated_at: Prisma.FieldRef<"activities", 'DateTime'>
   readonly creator_id: Prisma.FieldRef<"activities", 'String'>
 }
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
 // Custom InputTypes
 /**
@@ -3208,8 +3071,6 @@ export type activities$reservationsArgs<ExtArgs extends runtime.Types.Extensions
 }
 
 /**
-<<<<<<< HEAD
-=======
  * activities.activity_external_locations
  */
 export type activities$activity_external_locationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3234,7 +3095,6 @@ export type activities$activity_external_locationsArgs<ExtArgs extends runtime.T
 }
 
 /**
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
  * activities without action
  */
 export type activitiesDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {

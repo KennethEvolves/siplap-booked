@@ -1,8 +1,5 @@
 import { z } from "zod";
-<<<<<<< HEAD
-=======
 import { externalLocationSchema } from './external-locations.js';
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
 export const ACTIVITY_PERMISSIONS = {
   manage: "activity:manage",
@@ -12,10 +9,7 @@ export const ACTIVITY_PERMISSIONS = {
   createOwn: "activity:create_own",
   viewOwn: "activity:view_own",
   updateOwn: "activity:update_own",
-<<<<<<< HEAD
-=======
   viewAssigned: "activity:view_assigned",
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 } as const;
 
 export const ACTIVITY_APPROVAL_OPTIONS = [
@@ -40,10 +34,6 @@ const fields = z.strictObject({
 const ordered = (data: { startDate?: string; endDate?: string }) =>
   !data.startDate || !data.endDate || data.endDate >= data.startDate;
 export const createActivitySchema = fields
-<<<<<<< HEAD
-  .extend({ creatorId: z.uuid().optional() })
-  .refine(ordered, "La fecha final no puede ser anterior a la inicial");
-=======
   .extend({
     creatorId: z.uuid().optional(),
     externalLocations: z.array(externalLocationSchema).max(20).optional(),
@@ -53,29 +43,19 @@ export const createActivitySchema = fields
     (value) => !value.externalLocations || new Set(value.externalLocations.map((location) => location.googlePlaceId)).size === value.externalLocations.length,
     'No repitas ubicaciones en la misma actividad',
   );
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 export const updateActivitySchema = fields
   .partial()
   .extend({ creatorId: z.uuid().optional() })
   .refine((data) => Object.keys(data).length > 0, "Envía al menos un campo")
   .refine(ordered, "La fecha final no puede ser anterior a la inicial");
 export const approveActivitySchema = z.strictObject({
-<<<<<<< HEAD
-=======
   direction: z.enum(['planning', 'academic', 'administrative']),
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   status: z.enum(["approved", "rejected", "cancelled", "rescheduled"]),
 });
 export const activityListSchema = z.strictObject({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
-<<<<<<< HEAD
-export type CreateActivity = z.infer<typeof createActivitySchema>;
-export type UpdateActivity = z.infer<typeof updateActivitySchema>;
-export type ApproveActivity = z.infer<typeof approveActivitySchema>;
-export type ActivityList = z.infer<typeof activityListSchema>;
-=======
 export const activityPersonnelSchema = z.strictObject({
   userIds: z.array(z.uuid()).max(100),
 });
@@ -91,7 +71,6 @@ export interface ActivityPersonnelMember {
   username: string | null;
   email: string;
 }
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 export interface Activity {
   activityId: string;
   title: string | null;
@@ -105,14 +84,11 @@ export interface Activity {
   objectiveId: string | null;
   creator: { userId: string; username: string | null };
   status: "pending" | ApproveActivity["status"];
-<<<<<<< HEAD
-=======
   approvals: {
     planning: ActivityApprovalStatus;
     academic: ActivityApprovalStatus;
     administrative: ActivityApprovalStatus;
   };
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -122,8 +98,6 @@ export interface ActivityActions {
   canApprove: boolean;
   canDelete: boolean;
 }
-<<<<<<< HEAD
-=======
 export interface ActivityReport {
   reportId: string;
   activityId: string;
@@ -133,4 +107,3 @@ export interface ActivityReport {
   createdAt: string | null;
   updatedAt: string | null;
 }
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2

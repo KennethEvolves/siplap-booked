@@ -14,8 +14,6 @@ export const BASE_PERMISSIONS = [
   'activity:create_own',
   'activity:view_own',
   'activity:update_own',
-<<<<<<< HEAD
-=======
   'activity:view_assigned',
   'axes:create',
   'axes:read',
@@ -23,17 +21,13 @@ export const BASE_PERMISSIONS = [
   'objectives:create',
   'objectives:read',
   'objectives:update',
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   'reservation:manage',
   'reservation:view_all',
   'reservation:create_own',
   'reservation:view_own',
   'reservation:update_own',
   'reservation:delete_own',
-<<<<<<< HEAD
-=======
   'reservation:view_assigned',
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 ] as const;
 
 export const FULL_PERMISSIONS_CATALOG = [
@@ -61,8 +55,6 @@ export const FULL_PERMISSIONS_CATALOG = [
   { slug: 'activity:create_own', name: 'CREAR ACTIVIDADES PROPIAS', description: 'Registrar actividades ordinarias y extraordinarias' },
   { slug: 'activity:view_own', name: 'CONSULTAR ACTIVIDADES PROPIAS', description: 'Ver el listado y agenda de actividades propias' },
   { slug: 'activity:update_own', name: 'EDITAR ACTIVIDADES PROPIAS', description: 'Modificar actividades propias no aprobadas' },
-<<<<<<< HEAD
-=======
   { slug: 'activity:view_assigned', name: 'CONSULTAR ACTIVIDADES ASIGNADAS', description: 'Ver actividades que solicitan servicios al usuario colaborador' },
 
   // 5. Ejes de desarrollo y objetivos estratégicos
@@ -72,7 +64,6 @@ export const FULL_PERMISSIONS_CATALOG = [
   { slug: 'objectives:create', name: 'CREAR OBJETIVOS ESTRATÉGICOS', description: 'Registrar objetivos estratégicos' },
   { slug: 'objectives:read', name: 'CONSULTAR OBJETIVOS ESTRATÉGICOS', description: 'Consultar objetivos estratégicos' },
   { slug: 'objectives:update', name: 'EDITAR OBJETIVOS ESTRATÉGICOS', description: 'Modificar objetivos estratégicos' },
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
   // 5. Módulo de Reservaciones
   { slug: 'reservation:manage', name: 'GESTIONAR TODAS LAS RESERVACIONES', description: 'Crear, consultar, editar y eliminar cualquier reservación' },
@@ -81,10 +72,7 @@ export const FULL_PERMISSIONS_CATALOG = [
   { slug: 'reservation:view_own', name: 'CONSULTAR RESERVACIONES PROPIAS', description: 'Consultar reservaciones del usuario autenticado' },
   { slug: 'reservation:update_own', name: 'EDITAR RESERVACIONES PROPIAS', description: 'Modificar reservaciones propias' },
   { slug: 'reservation:delete_own', name: 'ELIMINAR RESERVACIONES PROPIAS', description: 'Eliminar reservaciones propias' },
-<<<<<<< HEAD
-=======
   { slug: 'reservation:view_assigned', name: 'CONSULTAR RESERVACIONES ASIGNADAS', description: 'Ver las reservaciones de actividades en las que el usuario colabora' },
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 
   // 6. Módulo de Espacios
   { slug: 'spaces:create', name: 'CREAR ESPACIOS', description: 'Registrar recintos, auditorios y salas' },
@@ -309,8 +297,6 @@ export async function seedRbac(prisma: PrismaClient) {
     }
   }
 
-<<<<<<< HEAD
-=======
   const rolePermissionGroups = [
     {
       aliases: ['DIRECTIVE', 'directive', 'DIRECTIVO'],
@@ -355,7 +341,6 @@ export async function seedRbac(prisma: PrismaClient) {
     }
   }
 
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   return {
     role: superRole.name ?? 'SUPERUSUARIO',
     permissions: assignedPermissions,

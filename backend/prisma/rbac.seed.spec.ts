@@ -126,11 +126,7 @@ describe('RBAC seed', () => {
       'reservation:delete_own',
     ];
     expect(db.links).toHaveLength(
-<<<<<<< HEAD
-      FULL_PERMISSIONS_CATALOG.length + 1 + ownPermissionSlugs.length * 4,
-=======
       FULL_PERMISSIONS_CATALOG.length + 1 + ownPermissionSlugs.length * 4 + 15,
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
     );
     expect(
       db.links.filter((link) => link.role_id === superuser.role_id),
@@ -147,13 +143,9 @@ describe('RBAC seed', () => {
     ]);
     for (const roleId of ['directive', 'lead', 'teacher', 'personal']) {
       const assignments = db.links.filter((link) => link.role_id === roleId);
-<<<<<<< HEAD
-      expect(assignments).toHaveLength(ownPermissionSlugs.length);
-=======
       expect(assignments).toHaveLength(
         ownPermissionSlugs.length + (roleId === 'directive' ? 12 : roleId === 'lead' ? 3 : 0),
       );
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
       for (const slug of ownPermissionSlugs) {
         const permission = db.permissions.find((item) => item.slug === slug)!;
         expect(assignments).toContainEqual({
@@ -223,8 +215,6 @@ describe('RBAC seed', () => {
       permission_id: viewPermission.permission_id,
     });
   });
-<<<<<<< HEAD
-=======
 
   it('asigna permisos de actividades y de ejes/objetivos según el rol', async () => {
     const db = database();
@@ -248,5 +238,4 @@ describe('RBAC seed', () => {
     ].sort());
     expect(slugs('collaborator')).toEqual(['activity:view_assigned', 'reservation:view_assigned']);
   });
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 });

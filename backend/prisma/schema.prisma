@@ -32,8 +32,6 @@ model activities {
   activity_requirements activity_requirements[]
   notifications         notifications[]
   reservations          reservations[]
-<<<<<<< HEAD
-=======
   activity_external_locations activity_external_locations[]
 }
 
@@ -58,7 +56,6 @@ model activity_external_locations {
 
   @@id([activity_id, location_id])
   @@index([location_id])
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }
 
 model activity_personnel {
@@ -412,11 +409,8 @@ enum activity_type {
 }
 
 enum reservation_status {
-<<<<<<< HEAD
-=======
   pending
   reserved
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   active
   in_use
   cancelled

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useTransition, useMemo } from 'react';
+import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { ActivityModal } from '@/components/activities/ActivityModal';
 import { Button } from '@/components/ui/Button';
 import { 
   Table, 
@@ -16,11 +16,9 @@ import {
   BackendActivity, 
   BackendActivityStatus,
   getActivities, 
-  createActivity,
-  updateActivity,
   updateActivityApproval
 } from '@/lib/api';
-import { Loader2, Check, AlertTriangle, ShieldCheck, Pencil } from 'lucide-react';
+import { Loader2, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 export default function ActivitiesPage() {
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -35,10 +33,6 @@ export default function ActivitiesPage() {
   
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [, startTransition] = useTransition();
-
-  // Estado para edición en modal
-  const [editingActivity, setEditingActivity] = useState<BackendActivity | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToastMessage({ type, text });
@@ -61,27 +55,7 @@ export default function ActivitiesPage() {
     return isSuperUser || permissions.includes('activity:create_own');
   }, [isSuperUser, permissions]);
 
-  const canEditAll = useMemo(() => {
-    return isSuperUser || permissions.includes('activity:update_all');
-  }, [isSuperUser, permissions]);
-
-  const canEditOwn = useMemo(() => {
-    return permissions.includes('activity:update_own');
-  }, [permissions]);
-
-  
   const canShowAllTabs = canViewAll || isSuperUser;
-
-  const canEditActivity = (activity: BackendActivity) => {
-    if (canEditAll) return true;
-    if (canEditOwn) {
-      const isOwner = 
-        (currentUserId && (activity.creator?.userId === currentUserId || (activity as any).creatorId === currentUserId)) ||
-        (currentUsername && activity.creator?.username?.toLowerCase() === currentUsername.toLowerCase());
-      return Boolean(isOwner);
-    }
-    return false;
-  };
 
   const roleScope = useMemo<'superuser' | 'directive' | 'lead'>(() => {
     if (isSuperUser) return 'superuser';
@@ -141,62 +115,6 @@ export default function ActivitiesPage() {
   useEffect(() => {
     refreshData();
   }, []);
-
-  const handleSaveActivity = async (
-    data: { 
-      title: string; 
-      description?: string; 
-      startDate: string;
-      endDate: string;
-      creatorId?: string;
-    },
-    activityId?: string
-  ) => {
-    try {
-      const validCreatorId = isSuperUser && data.creatorId && data.creatorId.trim().length > 0 
-        ? data.creatorId.trim() 
-        : undefined;
-
-      if (activityId) {
-        const res = await updateActivity(activityId, {
-          title: data.title,
-          description: data.description || null,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          ...(validCreatorId ? { creatorId: validCreatorId } : {}),
-        });
-
-        if (res?.activity) {
-          startTransition(() => {
-            setActivities((prev) =>
-              prev.map((a) => (a.activityId === activityId ? res.activity : a))
-            );
-          });
-          showToast('success', 'Actividad actualizada exitosamente.');
-        }
-      } else {
-        if (!canCreate) {
-          showToast('error', 'No cuentas con permiso para crear actividades.');
-          return;
-        }
-
-        const res = await createActivity({
-          title: data.title,
-          description: data.description || null,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          ...(validCreatorId ? { creatorId: validCreatorId } : {}),
-        });
-
-        if (res?.activity) {
-          setActivities((prev) => [res.activity, ...prev]);
-          showToast('success', 'Actividad registrada exitosamente.');
-        }
-      }
-    } catch {
-      showToast('error', 'Error al guardar la actividad o permisos insuficientes.');
-    }
-  };
 
   const handleUpdateStatus = async (
     activityId: string, 
@@ -263,25 +181,8 @@ export default function ActivitiesPage() {
     'cursor-pointer h-9 md:h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all';
 
   const renderActions = (activity: BackendActivity) => {
-    const userCanEditThis = canEditActivity(activity);
-
     return (
       <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
-        {userCanEditThis && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditingActivity(activity);
-              setIsEditModalOpen(true);
-            }}
-            className={`${actionBtn} text-primary border-primary/40 hover:bg-secondary flex items-center gap-1`}
-          >
-            <Pencil className="h-3 w-3" />
-            Editar
-          </Button>
-        )}
-
         {canApprove && (
           <>
             <Button
@@ -319,7 +220,7 @@ export default function ActivitiesPage() {
           </>
         )}
 
-        {!userCanEditThis && !canApprove && (
+        {!canApprove && (
           <Button
             size="sm"
             variant="ghost"
@@ -377,8 +278,13 @@ export default function ActivitiesPage() {
               </p>
             </div>
 
+            {/* BOTÓN CON ENLACE DIRECTO A LA PANTALLA COMPLETA */}
             {canCreate && (
-              <ActivityModal userRole={roleScope} onSave={handleSaveActivity} />
+              <Link href="/activities/new">
+                <Button className="cursor-pointer min-h-[44px] w-full sm:w-auto bg-[#5b141b] hover:bg-[#481015] text-white font-medium shadow-sm active:scale-95 transition-all rounded-xl px-5">
+                  + Nueva Actividad
+                </Button>
+              </Link>
             )}
           </div>
 
@@ -451,7 +357,7 @@ export default function ActivitiesPage() {
               </div>
             ) : (
               <>
-                {/* Escritorio y tablet horizontal */}
+                {/* Escritorio */}
                 <div className="hidden md:block">
                   <Table>
                     <TableHeader className="bg-secondary/70">
@@ -519,20 +425,6 @@ export default function ActivitiesPage() {
               </>
             )}
           </div>
-
-          {/* Modal para edición */}
-          {editingActivity && (
-            <ActivityModal
-              userRole={roleScope}
-              initialActivity={editingActivity}
-              isOpen={isEditModalOpen}
-              onOpenChange={(val) => {
-                setIsEditModalOpen(val);
-                if (!val) setEditingActivity(null);
-              }}
-              onSave={handleSaveActivity}
-            />
-          )}
 
         </div>
       </main>

@@ -132,8 +132,6 @@ describe('Permisos de actividades', () => {
     expect(approveActivitySchema.safeParse({ status: 'pending' }).success).toBe(
       false,
     );
-<<<<<<< HEAD
-=======
     expect(
       approveActivitySchema.safeParse({
         direction: 'planning',
@@ -161,7 +159,6 @@ describe('Permisos de actividades', () => {
         locations: [location, location],
       }).success,
     ).toBe(false);
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
   });
 
   it('solo SUPERUSUARIO puede reasignar una actividad y valida al nuevo responsable', async () => {

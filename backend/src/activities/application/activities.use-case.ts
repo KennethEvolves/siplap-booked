@@ -42,10 +42,7 @@ export class ActivitiesUseCase {
       canAssignCreator: policy.manages,
       canViewAll: policy.canViewAll,
       canViewOwn: policy.canViewAll || policy.canViewOwn,
-<<<<<<< HEAD
-=======
       canViewAssigned: policy.canViewAssigned,
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
       canUpdateAll: policy.canUpdateAll,
       canUpdateOwn: policy.canUpdateAll || policy.has(P.updateOwn),
       canApprove: policy.canApprove,
@@ -59,20 +56,12 @@ export class ActivitiesUseCase {
   }
   async list(userId: string, query: ActivityList) {
     const policy = await this.policy(userId);
-<<<<<<< HEAD
-    this.require(policy.canViewAll || policy.canViewOwn);
-    const result = await this.repository.list(
-      query,
-      policy.canViewAll ? undefined : userId,
-    );
-=======
     this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
     const creatorId = policy.canViewAll || !policy.canViewOwn ? undefined : userId;
     const assignedUserId = policy.canViewAll || !policy.canViewAssigned ? undefined : userId;
     const result = assignedUserId
       ? await this.repository.list(query, creatorId, assignedUserId)
       : await this.repository.list(query, creatorId);
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
     return {
       ...result,
       activities: result.activities.map((a) => this.present(a, policy)),
@@ -81,27 +70,15 @@ export class ActivitiesUseCase {
   }
   async get(userId: string, activityId: string) {
     const policy = await this.policy(userId);
-<<<<<<< HEAD
-    this.require(policy.canViewAll || policy.canViewOwn);
-    const activity = await this.repository.find(
-      activityId,
-      policy.canViewAll ? undefined : userId,
-=======
     this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
     const activity = await this.repository.find(
       activityId,
       policy.canViewAll || !policy.canViewOwn ? undefined : userId,
       policy.canViewAll || !policy.canViewAssigned ? undefined : userId,
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
     );
     if (!activity) throw new NotFoundException('Actividad no encontrada');
     return this.present(activity, policy);
   }
-<<<<<<< HEAD
-  async create(userId: string, input: CreateActivity) {
-    const policy = await this.policy(userId);
-    this.require(policy.canCreate);
-=======
   async report(userId: string, activityId: string): Promise<ActivityReport> {
     const policy = await this.policy(userId);
     this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
@@ -121,7 +98,6 @@ export class ActivitiesUseCase {
     if (policy.manages) {
       this.require(!!input.creatorId && input.creatorId !== userId);
     }
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
     this.require(
       !input.creatorId || input.creatorId === userId || policy.manages,
     );
@@ -163,11 +139,7 @@ export class ActivitiesUseCase {
     const policy = await this.policy(userId);
     this.require(policy.canApprove);
     return this.present(
-<<<<<<< HEAD
-      await this.repository.approve(activityId, input.status),
-=======
       await this.repository.approve(activityId, input.direction, input.status),
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
       policy,
     );
   }
@@ -175,8 +147,6 @@ export class ActivitiesUseCase {
     this.require((await this.policy(userId)).manages);
     await this.repository.delete(activityId);
   }
-<<<<<<< HEAD
-=======
 
   async externalLocations(userId: string, activityId: string) {
     const policy = await this.policy(userId);
@@ -248,5 +218,4 @@ export class ActivitiesUseCase {
     this.require(policy.canUpdateAll || (own && policy.has(P.updateOwn)));
     return { users: await this.repository.setActivityPersonnel(activityId, input) };
   }
->>>>>>> 8f49373e15769d54a405321cea9799e69c2dd2d2
 }

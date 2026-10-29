@@ -1062,6 +1062,7 @@ export interface activity_reportsFieldRefs {
   readonly created_at: Prisma.FieldRef<"activity_reports", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"activity_reports", 'DateTime'>
 }
+    
 
 // Custom InputTypes
 /**

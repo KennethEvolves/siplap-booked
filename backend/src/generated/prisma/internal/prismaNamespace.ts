@@ -3270,136 +3270,161 @@ export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
  * Reference to a field of type 'String'
  */
 export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String'>
+    
 
 
 /**
  * Reference to a field of type 'String[]'
  */
 export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>
+    
 
 
 /**
  * Reference to a field of type 'activity_type'
  */
 export type Enumactivity_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_type'>
+    
 
 
 /**
  * Reference to a field of type 'activity_type[]'
  */
 export type ListEnumactivity_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_type[]'>
+    
 
 
 /**
  * Reference to a field of type 'DateTime'
  */
 export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
+    
 
 
 /**
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
 
 
 /**
  * Reference to a field of type 'Boolean'
  */
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
 
 
 /**
  * Reference to a field of type 'activity_status'
  */
 export type Enumactivity_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_status'>
+    
 
 
 /**
  * Reference to a field of type 'activity_status[]'
  */
 export type ListEnumactivity_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'activity_status[]'>
+    
 
 
 /**
  * Reference to a field of type 'Decimal'
  */
 export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
+    
+
+
 /**
  * Reference to a field of type 'Decimal[]'
  */
 export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
+    
 
 
 /**
  * Reference to a field of type 'Int'
  */
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
 
 
 /**
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
 
 
 /**
  * Reference to a field of type 'reservation_status'
  */
 export type Enumreservation_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'reservation_status'>
+    
 
 
 /**
  * Reference to a field of type 'reservation_status[]'
  */
 export type ListEnumreservation_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'reservation_status[]'>
+    
 
 
 /**
  * Reference to a field of type 'resource_type'
  */
 export type Enumresource_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_type'>
+    
 
 
 /**
  * Reference to a field of type 'resource_type[]'
  */
 export type ListEnumresource_typeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_type[]'>
+    
 
 
 /**
  * Reference to a field of type 'resource_status'
  */
 export type Enumresource_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_status'>
+    
 
 
 /**
  * Reference to a field of type 'resource_status[]'
  */
 export type ListEnumresource_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'resource_status[]'>
+    
 
 
 /**
  * Reference to a field of type 'space_status'
  */
 export type Enumspace_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'space_status'>
+    
 
 
 /**
  * Reference to a field of type 'space_status[]'
  */
 export type ListEnumspace_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'space_status[]'>
+    
 
 
 /**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
 
 
 /**
  * Reference to a field of type 'Float[]'
  */
 export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
 
 /**
  * Batch Payload for updateMany & deleteMany & createMany

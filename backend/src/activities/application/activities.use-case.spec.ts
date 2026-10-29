@@ -69,9 +69,9 @@ describe('Permisos de actividades', () => {
     });
   });
   it('permisos antiguos no conceden acceso implícito', () => {
-    expect(
-      new ActivityPolicy('user', ['activities:create']).canCreate,
-    ).toBe(false);
+    expect(new ActivityPolicy('user', ['activities:create']).canCreate).toBe(
+      false,
+    );
   });
   it('rechaza asignar otro creador antes de escribir para create_own', async () => {
     const create = vi.fn();
@@ -138,6 +138,28 @@ describe('Permisos de actividades', () => {
         status: 'approved',
       }).success,
     ).toBe(true);
+    expect(
+      approveActivitySchema.safeParse({
+        direction: 'planning',
+        status: 'rescheduled',
+      }).success,
+    ).toBe(false);
+    expect(
+      approveActivitySchema.safeParse({
+        direction: 'planning',
+        status: 'rescheduled',
+        startDate: '2026-10-22',
+        endDate: '2026-10-23',
+      }).success,
+    ).toBe(true);
+    expect(
+      approveActivitySchema.safeParse({
+        direction: 'planning',
+        status: 'rescheduled',
+        startDate: '2026-10-24',
+        endDate: '2026-10-23',
+      }).success,
+    ).toBe(false);
     const location = {
       googlePlaceId: 'ChIJ123',
       name: 'Auditorio externo',

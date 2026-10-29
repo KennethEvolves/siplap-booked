@@ -56,9 +56,13 @@ export class ActivitiesUseCase {
   }
   async list(userId: string, query: ActivityList) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
-    const creatorId = policy.canViewAll || !policy.canViewOwn ? undefined : userId;
-    const assignedUserId = policy.canViewAll || !policy.canViewAssigned ? undefined : userId;
+    this.require(
+      policy.canViewAll || policy.canViewOwn || policy.canViewAssigned,
+    );
+    const creatorId =
+      policy.canViewAll || !policy.canViewOwn ? undefined : userId;
+    const assignedUserId =
+      policy.canViewAll || !policy.canViewAssigned ? undefined : userId;
     const result = assignedUserId
       ? await this.repository.list(query, creatorId, assignedUserId)
       : await this.repository.list(query, creatorId);
@@ -70,7 +74,9 @@ export class ActivitiesUseCase {
   }
   async get(userId: string, activityId: string) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    this.require(
+      policy.canViewAll || policy.canViewOwn || policy.canViewAssigned,
+    );
     const activity = await this.repository.find(
       activityId,
       policy.canViewAll || !policy.canViewOwn ? undefined : userId,
@@ -81,7 +87,9 @@ export class ActivitiesUseCase {
   }
   async report(userId: string, activityId: string): Promise<ActivityReport> {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    this.require(
+      policy.canViewAll || policy.canViewOwn || policy.canViewAssigned,
+    );
     const activity = await this.repository.find(
       activityId,
       policy.canViewAll || !policy.canViewOwn ? undefined : userId,
@@ -89,7 +97,10 @@ export class ActivitiesUseCase {
     );
     if (!activity) throw new NotFoundException('Actividad no encontrada');
     const report = await this.repository.report(activityId);
-    if (!report) throw new NotFoundException('El reporte de planeación aún no está generado');
+    if (!report)
+      throw new NotFoundException(
+        'El reporte de planeación aún no está generado',
+      );
     return report;
   }
   async create(userId: string, input: CreateActivity) {
@@ -139,7 +150,7 @@ export class ActivitiesUseCase {
     const policy = await this.policy(userId);
     this.require(policy.canApprove);
     return this.present(
-      await this.repository.approve(activityId, input.direction, input.status),
+      await this.repository.approve(activityId, input),
       policy,
     );
   }
@@ -150,7 +161,9 @@ export class ActivitiesUseCase {
 
   async externalLocations(userId: string, activityId: string) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    this.require(
+      policy.canViewAll || policy.canViewOwn || policy.canViewAssigned,
+    );
     const activity = await this.repository.find(
       activityId,
       policy.canViewAll || !policy.canViewOwn ? undefined : userId,
@@ -195,7 +208,9 @@ export class ActivitiesUseCase {
 
   async activityPersonnel(userId: string, activityId: string) {
     const policy = await this.policy(userId);
-    this.require(policy.canViewAll || policy.canViewOwn || policy.canViewAssigned);
+    this.require(
+      policy.canViewAll || policy.canViewOwn || policy.canViewAssigned,
+    );
     const activity = await this.repository.find(
       activityId,
       policy.canViewAll || !policy.canViewOwn ? undefined : userId,
@@ -216,6 +231,8 @@ export class ActivitiesUseCase {
     if (!activity) throw new NotFoundException('Actividad no encontrada');
     const own = activity.creator.userId === userId;
     this.require(policy.canUpdateAll || (own && policy.has(P.updateOwn)));
-    return { users: await this.repository.setActivityPersonnel(activityId, input) };
+    return {
+      users: await this.repository.setActivityPersonnel(activityId, input),
+    };
   }
 }

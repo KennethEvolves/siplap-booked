@@ -6,6 +6,7 @@ declare module 'next-auth' {
     accessToken?: string;
     roles?: string[];
     permissions?: string[];
+    role?: string;
   }
 
   interface Session {
@@ -14,6 +15,7 @@ declare module 'next-auth' {
       accessToken?: string;
       roles?: string[];
       permissions?: string[];
+      role?: string;
     };
   }
 }

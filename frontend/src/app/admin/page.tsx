@@ -12,13 +12,6 @@ import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
 
-const TABS = [
-  { key: 'users', label: 'Usuarios y Roles' },
-  { key: 'roles', label: 'Gestión de Roles' },
-  { key: 'permissions', label: 'Permisos' },
-  { key: 'profile', label: 'Mi Perfil' },
-];
-
 export default function AdminPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-slate-50" aria-label="Cargando panel" />}>

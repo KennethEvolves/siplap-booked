@@ -14,21 +14,27 @@ import {
   deleteReservation,
   BackendReservation,
   ReservationCreatorOption,
+  BackendActivity,
+  CreateReservationInput,
+  UpdateReservationInput,
+  ReservationSpaceOption,
+  getReservationSpaces,
+  getActivities,
 } from '@/lib/api';
+import { ReservationsCalendar } from '@/components/reservations/ReservationsCalendar';
 import {
   CalendarDays,
   ShieldCheck,
   Plus,
-  Loader2,
   Check,
   AlertTriangle,
 } from 'lucide-react';
 
 export default function ReservationsPage() {
   const { data: session, status } = useSession();
-  const user = session?.user as any;
+  const user = session?.user;
   const currentUserId = user?.id;
-  const permissions: string[] = (user?.permissions as string[]) || [];
+  const permissions = useMemo(() => user?.permissions || [], [user?.permissions]);
 
   const isSuperUser = useMemo(() => {
     return (
@@ -39,6 +45,8 @@ export default function ReservationsPage() {
   }, [permissions, user?.role]);
 
   const [reservations, setReservations] = useState<BackendReservation[]>([]);
+  const [activities, setActivities] = useState<BackendActivity[]>([]);
+  const [spaces, setSpaces] = useState<ReservationSpaceOption[]>([]);
   const [creatorsList, setCreatorsList] = useState<ReservationCreatorOption[]>([]);
   const [capabilities, setCapabilities] = useState({
     canCreate: true,
@@ -49,6 +57,7 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'mine' | 'all'>('mine');
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
+  const [displayMode, setDisplayMode] = useState<'list' | 'calendar'>('list');
   const [toastMessage, setToastMessage] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -58,10 +67,10 @@ export default function ReservationsPage() {
   const [selectedReservation, setSelectedReservation] =
     useState<BackendReservation | null>(null);
 
-  const showToast = (type: 'success' | 'error', text: string) => {
+  const showToast = useCallback((type: 'success' | 'error', text: string) => {
     setToastMessage({ type, text });
     setTimeout(() => setToastMessage(null), 3500);
-  };
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -72,6 +81,9 @@ export default function ReservationsPage() {
       setCapabilities(
         res?.capabilities || { canCreate: true, canManage: false, canViewAll: false }
       );
+      const [activityResponse, spaceResponse] = await Promise.allSettled([getActivities(), getReservationSpaces()]);
+      setActivities(activityResponse.status === 'fulfilled' ? activityResponse.value.activities || [] : []);
+      setSpaces(spaceResponse.status === 'fulfilled' ? spaceResponse.value.spaces || [] : []);
 
       if (res?.capabilities?.canManage || isSuperUser) {
         try {
@@ -81,18 +93,18 @@ export default function ReservationsPage() {
           console.warn('No se pudo cargar la lista de creadores:', e);
         }
       }
-    } catch (err: any) {
-      showToast('error', err?.message || 'Error al sincronizar reservaciones del servidor.');
+    } catch (err: unknown) {
+      showToast('error', err instanceof Error ? err.message : 'Error al sincronizar reservaciones del servidor.');
       setReservations([]);
     } finally {
       setLoading(false);
     }
-  }, [isSuperUser]);
+  }, [isSuperUser, showToast]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      loadData();
-    }
+    if (status !== 'authenticated') return;
+    const initialLoad = window.setTimeout(() => void loadData(), 0);
+    return () => window.clearTimeout(initialLoad);
   }, [status, loadData]);
 
   const canShowAllTabs = capabilities.canViewAll || isSuperUser;
@@ -109,11 +121,17 @@ export default function ReservationsPage() {
     return r.status?.toUpperCase() === filterStatus.toUpperCase();
   });
 
-  const handleSave = async (payload: any) => {
+  const handleSave = async (payload: CreateReservationInput) => {
     try {
       if (selectedReservation?.reservationId) {
-        // Exclusión defensiva de creatorId y metadatos no admitidos en updates
-        const { creatorId, id, creator, actions, ...updatePayload } = payload;
+        const updatePayload: UpdateReservationInput = {
+          title: payload.title,
+          description: payload.description,
+          activityId: payload.activityId,
+          startTime: payload.startTime,
+          endTime: payload.endTime,
+          spaceIds: payload.spaceIds,
+        };
         await updateReservation(selectedReservation.reservationId, updatePayload);
         showToast('success', 'Reservación actualizada exitosamente.');
       } else {
@@ -122,8 +140,8 @@ export default function ReservationsPage() {
       }
       setIsModalOpen(false);
       await loadData();
-    } catch (error: any) {
-      showToast('error', error.message || 'Error al guardar la reservación.');
+    } catch (error: unknown) {
+      showToast('error', error instanceof Error ? error.message : 'Error al guardar la reservación.');
     }
   };
 
@@ -133,8 +151,8 @@ export default function ReservationsPage() {
       await deleteReservation(id);
       showToast('success', 'Reservación eliminada exitosamente.');
       await loadData();
-    } catch (error: any) {
-      showToast('error', error.message || 'Error al eliminar la reservación.');
+    } catch (error: unknown) {
+      showToast('error', error instanceof Error ? error.message : 'Error al eliminar la reservación.');
     }
   };
 
@@ -198,6 +216,11 @@ export default function ReservationsPage() {
             )}
           </div>
 
+          <div className="flex gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
+            <Button size="sm" variant={displayMode === 'list' ? 'default' : 'outline'} onClick={() => setDisplayMode('list')}>Lista</Button>
+            <Button size="sm" variant={displayMode === 'calendar' ? 'default' : 'outline'} onClick={() => setDisplayMode('calendar')}><CalendarDays className="mr-1.5 h-4 w-4" />Calendario</Button>
+          </div>
+
           {canShowAllTabs && (
             <div className="flex items-center gap-2 bg-card p-2 rounded-2xl border border-border shadow-sm">
               <Button
@@ -234,6 +257,8 @@ export default function ReservationsPage() {
             </span>
             {[
               { key: 'TODOS', label: 'TODOS' },
+              { key: 'PENDING', label: 'PENDIENTE' },
+              { key: 'RESERVED', label: 'RESERVADA' },
               { key: 'ACTIVE', label: 'ACTIVA' },
               { key: 'IN_USE', label: 'EN USO' },
               { key: 'COMPLETED', label: 'COMPLETADA' },
@@ -255,7 +280,7 @@ export default function ReservationsPage() {
             ))}
           </div>
 
-          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          {displayMode === 'calendar' ? <ReservationsCalendar reservations={filteredReservations} activities={activeTab === 'mine' && canShowAllTabs ? activities.filter((activity) => activity.creator?.userId === currentUserId) : activities} loading={loading} /> : <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
             <ReservationTable
               reservations={filteredReservations}
               isLoading={loading}
@@ -265,7 +290,7 @@ export default function ReservationsPage() {
               }}
               onDelete={handleDelete}
             />
-          </div>
+          </div>}
 
           <ReservationModal
             isOpen={isModalOpen}
@@ -274,6 +299,8 @@ export default function ReservationsPage() {
             initialData={selectedReservation}
             canManage={capabilities.canManage || isSuperUser}
             creatorsList={creatorsList}
+            spaces={spaces}
+            activities={activities}
           />
         </div>
       </main>

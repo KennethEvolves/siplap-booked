@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   User,
+  Bell,
 } from 'lucide-react';
 
 const ADMIN_ROLES = ['superuser', 'reservation_manager'];
@@ -30,9 +31,9 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const { data: session } = useSession();
-  const user = session?.user as any;
+  const user = session?.user;
   const userRole: string | undefined = user?.role;
-  const permissions: string[] = (user?.permissions as string[]) || [];
+  const permissions = useMemo(() => user?.permissions || [], [user?.permissions]);
 
   const isSuperUser = useMemo(() => {
     return (
@@ -71,6 +72,7 @@ export function Sidebar() {
     const items = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, visible: true },
       { name: 'Mi Perfil', href: '/perfil', icon: User, visible: true },
+      { name: 'Notificaciones', href: '/notifications', icon: Bell, visible: true },
       { 
         name: 'Usuarios y Roles', 
         href: '/admin', 

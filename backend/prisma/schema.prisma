@@ -264,6 +264,7 @@ model reservation_spaces {
   spaces         spaces       @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction, map: "reservation_spaces_space_id_fk")
 
   @@id([reservation_id, space_id], map: "reservation_spaces_pk")
+  @@index([space_id], map: "reservation_spaces_space_id_idx")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -284,6 +285,8 @@ model reservations {
   reservation_spaces    reservation_spaces[]
   activities            activities?             @relation(fields: [activity_id], references: [activity_id], onDelete: Restrict, onUpdate: NoAction, map: "reservations_activity_id_fk")
   users                 users                   @relation(fields: [creator_id], references: [user_id], onUpdate: NoAction, map: "reservations_creator_id_fk")
+
+  @@index([status, start_time], map: "reservations_status_start_time_idx")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -413,6 +416,7 @@ enum reservation_status {
   reserved
   active
   in_use
+  inactive
   cancelled
   completed
 }

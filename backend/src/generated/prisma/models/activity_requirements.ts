@@ -1123,7 +1123,7 @@ export interface activity_requirementsFieldRefs {
   readonly observations: Prisma.FieldRef<"activity_requirements", 'String'>
   readonly created_at: Prisma.FieldRef<"activity_requirements", 'DateTime'>
 }
-
+    
 
 // Custom InputTypes
 /**

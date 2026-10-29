@@ -1,17 +1,25 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const RESERVATION_PERMISSIONS = {
-  manage: 'reservation:manage',
-  viewAll: 'reservation:view_all',
-  createOwn: 'reservation:create_own',
-  viewOwn: 'reservation:view_own',
-  updateOwn: 'reservation:update_own',
-  deleteOwn: 'reservation:delete_own',
-  viewAssigned: 'reservation:view_assigned',
+  manage: "reservation:manage",
+  viewAll: "reservation:view_all",
+  createOwn: "reservation:create_own",
+  viewOwn: "reservation:view_own",
+  updateOwn: "reservation:update_own",
+  deleteOwn: "reservation:delete_own",
+  viewAssigned: "reservation:view_assigned",
 } as const;
 
 const timestamp = z.iso.datetime({ offset: true });
-const reservationStatus = z.enum(['pending', 'reserved', 'active', 'in_use', 'cancelled', 'completed']);
+const reservationStatus = z.enum([
+  "pending",
+  "reserved",
+  "active",
+  "in_use",
+  "inactive",
+  "cancelled",
+  "completed",
+]);
 const reservationFields = {
   title: z.string().trim().min(1).max(255),
   description: z.string().trim().max(10000).nullable(),
@@ -23,7 +31,7 @@ const reservationFields = {
 const spaceIds = z
   .array(z.uuid())
   .max(20)
-  .refine((ids) => new Set(ids).size === ids.length, 'No repitas espacios');
+  .refine((ids) => new Set(ids).size === ids.length, "No repitas espacios");
 const validWindow = (value: { startTime?: string; endTime?: string }) =>
   !value.startTime ||
   !value.endTime ||
@@ -39,30 +47,34 @@ export const createReservationSchema = z
     startTime: reservationFields.startTime,
     endTime: reservationFields.endTime,
   })
-  .refine(validWindow, 'La fecha final debe ser posterior a la inicial');
+  .refine(validWindow, "La fecha final debe ser posterior a la inicial");
 
 export const putReservationSchema = z
   .strictObject({ ...reservationFields, spaceIds: spaceIds.optional() })
-  .refine(validWindow, 'La fecha final debe ser posterior a la inicial');
+  .refine(validWindow, "La fecha final debe ser posterior a la inicial");
 
 export const patchReservationSchema = z
   .strictObject({ ...reservationFields, spaceIds: spaceIds.optional() })
   .partial()
   .refine(
     (value) => Object.values(value).some((field) => field !== undefined),
-    'Envía al menos un campo',
+    "Envía al menos un campo",
   )
-  .refine(validWindow, 'La fecha final debe ser posterior a la inicial');
+  .refine(validWindow, "La fecha final debe ser posterior a la inicial");
 
-export const reservationListSchema = z.strictObject({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  startTime: timestamp.optional(),
-  endTime: timestamp.optional(),
-}).refine(
-  ({ startTime, endTime }) => !startTime || !endTime || Date.parse(endTime) > Date.parse(startTime),
-  'El fin del rango debe ser posterior al inicio',
-);
+export const reservationListSchema = z
+  .strictObject({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    startTime: timestamp.optional(),
+    endTime: timestamp.optional(),
+    includeInactive: z.enum(["true", "false"]).optional(),
+  })
+  .refine(
+    ({ startTime, endTime }) =>
+      !startTime || !endTime || Date.parse(endTime) > Date.parse(startTime),
+    "El fin del rango debe ser posterior al inicio",
+  );
 
 export type CreateReservation = z.infer<typeof createReservationSchema>;
 export type PutReservation = z.infer<typeof putReservationSchema>;
@@ -90,7 +102,7 @@ export interface ReservedSpace {
   name: string | null;
   description: string | null;
   capacity: number | null;
-  status: 'active' | 'inactive' | 'undermaintenance';
+  status: "active" | "inactive" | "undermaintenance";
 }
 
 export type ReservationSpaceOption = ReservedSpace;

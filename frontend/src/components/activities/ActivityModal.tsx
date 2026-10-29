@@ -10,11 +10,22 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/Button';
-import { apiFetch, BackendActivity } from '@/lib/api';
+import {
+  ActivityPersonnelMember,
+  apiFetch,
+  BackendActivity,
+  ExternalLocationInput,
+  getActivityExternalLocations,
+  getActivityPersonnel,
+  getReservationSpaces,
+  ReservationSpaceOption,
+} from '@/lib/api';
+import { ExternalLocationPicker } from './ExternalLocationPicker';
 import { Loader2 } from 'lucide-react';
 
 interface ActivityModalProps {
   userRole: 'superuser' | 'directive' | 'lead';
+  canReserve?: boolean;
   initialActivity?: BackendActivity | null;
   triggerButton?: React.ReactNode;
   isOpen?: boolean;
@@ -25,6 +36,11 @@ interface ActivityModalProps {
     startDate: string;
     endDate: string;
     creatorId?: string;
+    externalLocations: ExternalLocationInput[];
+    spaceIds: string[];
+    reserveStartTime?: string;
+    reserveEndTime?: string;
+    personnelIds: string[];
   }, activityId?: string) => Promise<void> | void;
 }
 
@@ -32,6 +48,13 @@ interface UserOption {
   userId: string;
   username: string;
   email: string;
+}
+
+interface UserDirectoryEntry {
+  userId?: string;
+  id?: string;
+  username: string | null;
+  email: string | null;
 }
 
 // text-base en móvil evita que iOS haga zoom al enfocar un campo
@@ -49,6 +72,7 @@ export function ActivityModal({
   isOpen: externalOpen,
   onOpenChange: externalOnOpenChange,
   onSave,
+  canReserve = false,
 }: ActivityModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -63,12 +87,21 @@ export function ActivityModal({
   const [endDate, setEndDate] = useState(today);
   const [creatorId, setCreatorId] = useState('');
   const [usersList, setUsersList] = useState<UserOption[]>([]);
+  const [externalLocations, setExternalLocations] = useState<ExternalLocationInput[]>([]);
+  const [spaceOptions, setSpaceOptions] = useState<ReservationSpaceOption[]>([]);
+  const [spaceIds, setSpaceIds] = useState<string[]>([]);
+  const [reserveSpaces, setReserveSpaces] = useState(false);
+  const [reserveStartTime, setReserveStartTime] = useState('09:00');
+  const [reserveEndTime, setReserveEndTime] = useState('10:00');
+  const [personnelIds, setPersonnelIds] = useState<string[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingSpaces, setLoadingSpaces] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSuperUser = userRole === 'superuser';
 
   // Sincronizar campos cuando se abre para editar o crear
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (open) {
       if (initialActivity) {
@@ -81,15 +114,35 @@ export function ActivityModal({
           initialActivity.endDate ? initialActivity.endDate.split('T')[0] : today
         );
         setCreatorId(initialActivity.creator?.userId || '');
+        setReserveSpaces(false);
+        setSpaceIds([]);
+        void Promise.all([
+          getActivityExternalLocations(initialActivity.activityId).catch(() => ({ locations: [] })),
+          getActivityPersonnel(initialActivity.activityId).catch(() => ({ users: [] as ActivityPersonnelMember[] })),
+        ]).then(([locationResponse, personnelResponse]) => {
+          setExternalLocations(locationResponse.locations.map((location) => ({
+            googlePlaceId: location.googlePlaceId,
+            name: location.name,
+            formattedAddress: location.formattedAddress,
+            latitude: location.latitude,
+            longitude: location.longitude,
+          })));
+          setPersonnelIds(personnelResponse.users.map((member) => member.userId));
+        });
       } else {
         setTitle('');
         setDescription('');
         setStartDate(today);
         setEndDate(today);
         setCreatorId('');
+        setExternalLocations([]);
+        setPersonnelIds([]);
+        setSpaceIds([]);
+        setReserveSpaces(false);
       }
     }
   }, [open, initialActivity, today]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Cargar directorio de usuarios solo si es Superusuario
   useEffect(() => {
@@ -97,14 +150,13 @@ export function ActivityModal({
       const fetchUsers = async () => {
         try {
           setLoadingUsers(true);
-          const res = await apiFetch<{ users: UserOption[] } | UserOption[]>('/users');
+          const res = await apiFetch<{ users: UserDirectoryEntry[] } | UserDirectoryEntry[]>('/users');
           const rawList = Array.isArray(res) ? res : (res?.users || []);
 
-          const mappedUsers: UserOption[] = rawList.map((u: any) => ({
-            userId: u.userId || u.id,
-            username: u.username || 'Sin nombre',
-            email: u.email || '',
-          }));
+          const mappedUsers: UserOption[] = rawList.flatMap((entry) => {
+            const userId = entry.userId || entry.id;
+            return userId ? [{ userId, username: entry.username || 'Sin nombre', email: entry.email || '' }] : [];
+          });
 
           setUsersList(mappedUsers);
         } catch {
@@ -118,9 +170,28 @@ export function ActivityModal({
     }
   }, [open, isSuperUser]);
 
+  useEffect(() => {
+    if (!open || !canReserve) return;
+    let active = true;
+    const loadingTimer = window.setTimeout(() => setLoadingSpaces(true), 0);
+    void getReservationSpaces()
+      .then((response) => { if (active) setSpaceOptions(response.spaces || []); })
+      .catch(() => { if (active) setSpaceOptions([]); })
+      .finally(() => {
+        window.clearTimeout(loadingTimer);
+        if (active) setLoadingSpaces(false);
+      });
+    return () => {
+      active = false;
+      window.clearTimeout(loadingTimer);
+    };
+  }, [open, canReserve]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !startDate || !endDate) return;
+    if (isSuperUser && !isEditing && !creatorId) return;
+    if (reserveSpaces && (spaceIds.length === 0 || reserveEndTime <= reserveStartTime)) return;
 
     try {
       setIsSubmitting(true);
@@ -131,6 +202,11 @@ export function ActivityModal({
           startDate,
           endDate,
           creatorId: isSuperUser && creatorId ? creatorId : undefined,
+          externalLocations,
+          spaceIds: reserveSpaces ? spaceIds : [],
+          reserveStartTime: reserveSpaces ? `${startDate}T${reserveStartTime}` : undefined,
+          reserveEndTime: reserveSpaces ? `${endDate}T${reserveEndTime}` : undefined,
+          personnelIds,
         },
         initialActivity?.activityId
       );
@@ -212,6 +288,70 @@ export function ActivityModal({
             />
           </div>
 
+          <section className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-4">
+            <h3 className="text-sm font-semibold text-foreground">Ubicación de la actividad</h3>
+            <ExternalLocationPicker
+              locations={externalLocations}
+              onChange={setExternalLocations}
+              disabled={isSubmitting}
+            />
+            {canReserve && (
+              <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                <label className="flex items-start gap-3 text-sm font-medium text-foreground">
+                  <input type="checkbox" checked={reserveSpaces} onChange={(event) => setReserveSpaces(event.target.checked)} disabled={isSubmitting || loadingSpaces} className="mt-1 h-4 w-4 accent-primary" />
+                  Reservar espacios universitarios para esta actividad
+                </label>
+                {reserveSpaces && (
+                  <>
+                    {loadingSpaces ? (
+                      <p className="text-xs text-muted-foreground">Cargando espacios disponibles…</p>
+                    ) : spaceOptions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No hay espacios activos o no tienes permiso para consultarlos.</p>
+                    ) : (
+                      <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
+                        {spaceOptions.map((space) => (
+                          <label key={space.spaceId} className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={spaceIds.includes(space.spaceId)} onChange={(event) => setSpaceIds((current) => event.target.checked ? [...current, space.spaceId] : current.filter((id) => id !== space.spaceId))} disabled={isSubmitting} className="h-4 w-4 accent-primary" />
+                            <span>{space.name || 'Espacio sin nombre'}{space.capacity ? ` · capacidad ${space.capacity}` : ''}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="space-y-1 text-xs font-semibold text-muted-foreground">
+                        Inicio de reservación
+                        <input type="time" value={reserveStartTime} onChange={(event) => setReserveStartTime(event.target.value)} disabled={isSubmitting} className={fieldClass} required={reserveSpaces} />
+                      </label>
+                      <label className="space-y-1 text-xs font-semibold text-muted-foreground">
+                        Fin de reservación
+                        <input type="time" value={reserveEndTime} onChange={(event) => setReserveEndTime(event.target.value)} disabled={isSubmitting} className={fieldClass} required={reserveSpaces} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">La reservación se vincula a la actividad y queda pendiente hasta su aprobación.</p>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+
+          {isSuperUser && (
+            <section className="space-y-2 rounded-2xl border border-border bg-background p-4">
+              <h3 className="text-sm font-semibold text-foreground">Colaboradores y notificaciones</h3>
+              <p className="text-xs text-muted-foreground">Las personas seleccionadas recibirán notificaciones cuando solicites un servicio para la actividad.</p>
+              {loadingUsers ? <p className="text-xs text-muted-foreground">Cargando usuarios…</p> : (
+                <div className="max-h-40 space-y-2 overflow-y-auto">
+                  {usersList.map((user) => (
+                    <label key={user.userId} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={personnelIds.includes(user.userId)} onChange={(event) => setPersonnelIds((current) => event.target.checked ? [...current, user.userId] : current.filter((id) => id !== user.userId))} disabled={isSubmitting} className="h-4 w-4 accent-primary" />
+                      <span>{user.username} <span className="text-xs text-muted-foreground">{user.email}</span></span>
+                    </label>
+                  ))}
+                  {!usersList.length && <p className="text-xs text-muted-foreground">No hay usuarios disponibles para asignar.</p>}
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Selector de creador solo para superusuario */}
           {isSuperUser && (
             <div className="bg-secondary border border-border rounded-xl p-3 space-y-1.5">
@@ -233,8 +373,9 @@ export function ActivityModal({
                   onChange={(e) => setCreatorId(e.target.value)}
                   className={`${fieldClass} min-h-[44px] cursor-pointer`}
                   disabled={isSubmitting}
+                  required={!isEditing}
                 >
-                  <option value="">Mantener autor actual / Superusuario</option>
+                  {!isEditing && <option value="">Selecciona un usuario responsable</option>}
                   {usersList.map((u) => (
                     <option key={u.userId} value={u.userId}>
                       {u.username} ({u.email})

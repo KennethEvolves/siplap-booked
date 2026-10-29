@@ -34,6 +34,7 @@ export const reservation_status = {
   reserved: 'reserved',
   active: 'active',
   in_use: 'in_use',
+  inactive: 'inactive',
   cancelled: 'cancelled',
   completed: 'completed'
 } as const

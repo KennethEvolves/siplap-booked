@@ -8,7 +8,6 @@ import type {
   ExternalLocation,
   ExternalLocationInput,
   ApproveActivity,
-  ActivityApprovalDirection,
   CreateActivity,
   UpdateActivity,
 } from '@shared/contracts';
@@ -125,7 +124,12 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       where: {
         activity_id: activityId,
         ...(creatorId && assignedUserId
-          ? { OR: [{ creator_id: creatorId }, { activity_personnel: { some: { user_id: assignedUserId } } }] }
+          ? {
+              OR: [
+                { creator_id: creatorId },
+                { activity_personnel: { some: { user_id: assignedUserId } } },
+              ],
+            }
           : creatorId
             ? { creator_id: creatorId }
             : assignedUserId
@@ -238,12 +242,19 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       where: { activity_id: activityId, location_id: locationId },
     });
     if (result.count === 0)
-      throw new RbacError('not_found', 'Ubicación no encontrada para la actividad');
+      throw new RbacError(
+        'not_found',
+        'Ubicación no encontrada para la actividad',
+      );
   }
-  async activityPersonnel(activityId: string): Promise<ActivityPersonnelMember[]> {
+  async activityPersonnel(
+    activityId: string,
+  ): Promise<ActivityPersonnelMember[]> {
     const rows = await this.prisma.activity_personnel.findMany({
       where: { activity_id: activityId },
-      select: { users: { select: { user_id: true, username: true, email: true } } },
+      select: {
+        users: { select: { user_id: true, username: true, email: true } },
+      },
       orderBy: { users: { username: 'asc' } },
     });
     return rows.map(({ users }) => ({
@@ -256,62 +267,81 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
     activityId: string,
     input: ActivityPersonnelInput,
   ): Promise<ActivityPersonnelMember[]> {
-    await prismaWrite(() => this.prisma.$transaction(async (tx) => {
-      const uniqueIds = [...new Set(input.userIds)];
-      const activeUsers = await tx.users.count({
-        where: { user_id: { in: uniqueIds }, user_statuses: { name: 'ACTIVE' } },
-      });
-      if (activeUsers !== uniqueIds.length)
-        throw new RbacError('invalid', 'Todos los colaboradores deben ser usuarios activos existentes');
-      await tx.activity_personnel.deleteMany({ where: { activity_id: activityId } });
-      if (uniqueIds.length) {
-        await tx.activity_personnel.createMany({
-          data: uniqueIds.map((user_id) => ({ activity_id: activityId, user_id })),
+    await prismaWrite(() =>
+      this.prisma.$transaction(async (tx) => {
+        const uniqueIds = [...new Set(input.userIds)];
+        const activeUsers = await tx.users.count({
+          where: {
+            user_id: { in: uniqueIds },
+            user_statuses: { name: 'ACTIVE' },
+          },
         });
-        await tx.notifications.createMany({
-          data: uniqueIds.map((user_id) => ({
-            user_id,
-            activity_id: activityId,
-            title: 'Se requiere tu servicio',
-            message: 'Se te asignó como colaborador de una actividad. Revisa sus detalles y fechas.',
-            type: 'activity_service_request',
-          })),
+        if (activeUsers !== uniqueIds.length)
+          throw new RbacError(
+            'invalid',
+            'Todos los colaboradores deben ser usuarios activos existentes',
+          );
+        await tx.activity_personnel.deleteMany({
+          where: { activity_id: activityId },
         });
-      }
-    }));
+        if (uniqueIds.length) {
+          await tx.activity_personnel.createMany({
+            data: uniqueIds.map((user_id) => ({
+              activity_id: activityId,
+              user_id,
+            })),
+          });
+          await tx.notifications.createMany({
+            data: uniqueIds.map((user_id) => ({
+              user_id,
+              activity_id: activityId,
+              title: 'Se requiere tu servicio',
+              message:
+                'Se te asignó como colaborador de una actividad. Revisa sus detalles y fechas.',
+              type: 'activity_service_request',
+            })),
+          });
+        }
+      }),
+    );
     return this.activityPersonnel(activityId);
   }
   async create(input: CreateActivity & { creatorId: string }) {
-    return prismaWrite(() => this.prisma.$transaction(async (tx) => {
-      const activity = await tx.activities.create({
-        data: { ...data(input), creator_id: input.creatorId },
-        select,
-      });
-      for (const location of input.externalLocations ?? []) {
-        const saved = await tx.external_locations.upsert({
-          where: { google_place_id: location.googlePlaceId },
-          create: {
-            google_place_id: location.googlePlaceId,
-            name: location.name,
-            formatted_address: location.formattedAddress ?? null,
-            latitude: location.latitude,
-            longitude: location.longitude,
-          },
-          update: {
-            name: location.name,
-            formatted_address: location.formattedAddress ?? null,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            updated_at: new Date(),
-          },
-          select: { location_id: true },
+    return prismaWrite(() =>
+      this.prisma.$transaction(async (tx) => {
+        const activity = await tx.activities.create({
+          data: { ...data(input), creator_id: input.creatorId },
+          select,
         });
-        await tx.activity_external_locations.create({
-          data: { activity_id: activity.activity_id, location_id: saved.location_id },
-        });
-      }
-      return map(activity);
-    }));
+        for (const location of input.externalLocations ?? []) {
+          const saved = await tx.external_locations.upsert({
+            where: { google_place_id: location.googlePlaceId },
+            create: {
+              google_place_id: location.googlePlaceId,
+              name: location.name,
+              formatted_address: location.formattedAddress ?? null,
+              latitude: location.latitude,
+              longitude: location.longitude,
+            },
+            update: {
+              name: location.name,
+              formatted_address: location.formattedAddress ?? null,
+              latitude: location.latitude,
+              longitude: location.longitude,
+              updated_at: new Date(),
+            },
+            select: { location_id: true },
+          });
+          await tx.activity_external_locations.create({
+            data: {
+              activity_id: activity.activity_id,
+              location_id: saved.location_id,
+            },
+          });
+        }
+        return map(activity);
+      }),
+    );
   }
   async update(activityId: string, input: UpdateActivity, creatorId?: string) {
     try {
@@ -360,94 +390,265 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       throw error;
     }
   }
-  async approve(
-    activityId: string,
-    direction: ActivityApprovalDirection,
-    status: ApproveActivity['status'],
-  ) {
-    return prismaWrite(() => this.prisma.$transaction(async (tx) => {
-      const current = await tx.activities.findUnique({
-        where: { activity_id: activityId },
-        select: {
-          activity_id: true,
-          title: true,
-          start_date: true,
-          creator_id: true,
-          planning_approved: true,
-          academic_approved: true,
-          admin_approved: true,
-        },
-      });
-      if (!current) throw new RbacError('not_found', 'Actividad no encontrada');
-      const approvalField = {
-        planning: 'planning_approved',
-        academic: 'academic_approved',
-        administrative: 'admin_approved',
-      } as const;
-      const approvals = {
-        planning: current.planning_approved,
-        academic: current.academic_approved,
-        administrative: current.admin_approved,
-        [direction]: status,
-      };
-      const values = Object.values(approvals);
-      const overall = values.includes('cancelled')
-        ? 'cancelled'
-        : values.includes('rejected')
-          ? 'rejected'
-          : values.includes('rescheduled')
-            ? 'rescheduled'
-            : values.every((value) => value === 'approved')
-              ? 'approved'
-              : 'pending';
-      const activity = await tx.activities.update({
-        where: { activity_id: activityId },
-        data: {
-          [approvalField[direction]]: status,
-          overall_status: overall,
-          updated_at: new Date(),
-        },
-        select,
-      });
-      await tx.reservations.updateMany({
-        where: { activity_id: activityId },
-        data: {
-          status: overall === 'approved'
-            ? 'reserved'
-            : overall === 'cancelled' || overall === 'rejected'
+  async approve(activityId: string, input: ApproveActivity) {
+    const { direction, status } = input;
+    if (status === 'rescheduled' && (!input.startDate || !input.endDate)) {
+      throw new RbacError(
+        'invalid',
+        'La reprogramación requiere nuevas fechas de inicio y término',
+      );
+    }
+    return prismaWrite(async () => {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const current = await tx.activities.findUnique({
+              where: { activity_id: activityId },
+              select: {
+                activity_id: true,
+                title: true,
+                start_date: true,
+                end_date: true,
+                creator_id: true,
+                planning_approved: true,
+                academic_approved: true,
+                admin_approved: true,
+                overall_status: true,
+              },
+            });
+            if (!current)
+              throw new RbacError('not_found', 'Actividad no encontrada');
+            const approvalField = {
+              planning: 'planning_approved',
+              academic: 'academic_approved',
+              administrative: 'admin_approved',
+            } as const;
+            const alreadyApplied =
+              current[approvalField[direction]] === status &&
+              (status !== 'rescheduled' ||
+                (current.start_date?.toISOString().slice(0, 10) ===
+                  input.startDate &&
+                  current.end_date?.toISOString().slice(0, 10) ===
+                    input.endDate));
+            if (alreadyApplied) {
+              return map(
+                await tx.activities.findUniqueOrThrow({
+                  where: { activity_id: activityId },
+                  select,
+                }),
+              );
+            }
+            const approvals = {
+              planning: current.planning_approved,
+              academic: current.academic_approved,
+              administrative: current.admin_approved,
+              ...(status === 'rescheduled'
+                ? {
+                    planning: 'pending' as const,
+                    academic: 'pending' as const,
+                    administrative: 'pending' as const,
+                  }
+                : {}),
+              [direction]: status,
+            };
+            const values = Object.values(approvals);
+            const overall = values.includes('cancelled')
               ? 'cancelled'
-              : 'pending',
-          updated_at: new Date(),
-        },
-      });
-      if (overall === 'approved') {
-        const year = current.start_date?.getUTCFullYear() ?? new Date().getUTCFullYear();
-        await tx.activity_reports.upsert({
-          where: { activity_id: activityId },
-          create: {
-            activity_id: activityId,
-            folio: `PL-${year}-${activityId.slice(0, 8).toUpperCase()}`,
-            results_summary: `Reporte de planeación generado automáticamente para la actividad “${current.title ?? 'Sin título'}” después de completar las aprobaciones institucionales.`,
+              : values.includes('rejected')
+                ? 'rejected'
+                : values.includes('rescheduled')
+                  ? 'rescheduled'
+                  : values.every((value) => value === 'approved')
+                    ? 'approved'
+                    : 'pending';
+            const activity = await tx.activities.update({
+              where: { activity_id: activityId },
+              data: {
+                [approvalField[direction]]: status,
+                ...(status === 'rescheduled'
+                  ? {
+                      planning_approved:
+                        direction === 'planning' ? 'rescheduled' : 'pending',
+                      academic_approved:
+                        direction === 'academic' ? 'rescheduled' : 'pending',
+                      admin_approved:
+                        direction === 'administrative'
+                          ? 'rescheduled'
+                          : 'pending',
+                      start_date: new Date(`${input.startDate}T00:00:00.000Z`),
+                      end_date: new Date(`${input.endDate}T00:00:00.000Z`),
+                    }
+                  : {}),
+                overall_status: overall,
+                updated_at: new Date(),
+              },
+              select,
+            });
+            if (status === 'rescheduled') {
+              await tx.activity_reports.deleteMany({
+                where: { activity_id: activityId },
+              });
+              const oldStart = current.start_date?.getTime();
+              const oldEnd = current.end_date?.getTime();
+              const newStart = new Date(
+                `${input.startDate}T00:00:00.000Z`,
+              ).getTime();
+              const newEnd = new Date(
+                `${input.endDate}T00:00:00.000Z`,
+              ).getTime();
+              const reservations = await tx.reservations.findMany({
+                where: {
+                  activity_id: activityId,
+                  status: { notIn: ['inactive', 'cancelled'] },
+                },
+                select: {
+                  reservation_id: true,
+                  start_time: true,
+                  end_time: true,
+                  reservation_spaces: { select: { space_id: true } },
+                },
+              });
+              for (const reservation of reservations) {
+                const startTime =
+                  reservation.start_time && oldStart !== undefined
+                    ? new Date(
+                        reservation.start_time.getTime() + newStart - oldStart,
+                      )
+                    : reservation.start_time;
+                const endTime =
+                  reservation.end_time && oldEnd !== undefined
+                    ? new Date(reservation.end_time.getTime() + newEnd - oldEnd)
+                    : reservation.end_time;
+                if (
+                  startTime &&
+                  endTime &&
+                  reservation.reservation_spaces.length
+                ) {
+                  const conflict = await tx.reservations.findFirst({
+                    where: {
+                      activity_id: { not: activityId },
+                      status: {
+                        in: ['pending', 'reserved', 'active', 'in_use'],
+                      },
+                      start_time: { lt: endTime },
+                      end_time: { gt: startTime },
+                      reservation_spaces: {
+                        some: {
+                          space_id: {
+                            in: reservation.reservation_spaces.map(
+                              ({ space_id }) => space_id,
+                            ),
+                          },
+                        },
+                      },
+                    },
+                    select: { reservation_id: true },
+                  });
+                  if (conflict) {
+                    throw new RbacError(
+                      'conflict',
+                      'La reprogramación coincide con una reservación existente en uno de los espacios seleccionados',
+                    );
+                  }
+                }
+                await tx.reservations.update({
+                  where: { reservation_id: reservation.reservation_id },
+                  data: {
+                    start_time: startTime,
+                    end_time: endTime,
+                    status: 'pending',
+                    updated_at: new Date(),
+                  },
+                });
+              }
+            } else {
+              await tx.reservations.updateMany({
+                where: { activity_id: activityId },
+                data: {
+                  status:
+                    overall === 'approved'
+                      ? 'reserved'
+                      : overall === 'cancelled'
+                        ? 'inactive'
+                        : overall === 'rejected'
+                          ? 'cancelled'
+                          : 'pending',
+                  updated_at: new Date(),
+                },
+              });
+            }
+            if (overall === 'approved') {
+              const year =
+                current.start_date?.getUTCFullYear() ??
+                new Date().getUTCFullYear();
+              await tx.activity_reports.upsert({
+                where: { activity_id: activityId },
+                create: {
+                  activity_id: activityId,
+                  folio: `PL-${year}-${activityId.slice(0, 8).toUpperCase()}`,
+                  results_summary: `Reporte de planeación generado automáticamente para la actividad “${current.title ?? 'Sin título'}” después de completar las aprobaciones institucionales.`,
+                },
+                update: { updated_at: new Date() },
+              });
+            }
+            const recipients = await tx.activity_personnel.findMany({
+              where: { activity_id: activityId },
+              select: { user_id: true },
+            });
+            const recipientIds = [
+              ...new Set([
+                current.creator_id,
+                ...recipients.map(({ user_id }) => user_id),
+              ]),
+            ];
+            const enteredRescheduled =
+              overall === 'rescheduled' &&
+              (current.overall_status !== 'rescheduled' ||
+                (status === 'rescheduled' &&
+                  (current.start_date?.toISOString().slice(0, 10) !==
+                    input.startDate ||
+                    current.end_date?.toISOString().slice(0, 10) !==
+                      input.endDate)));
+            const enteredCancelled =
+              overall === 'cancelled' && current.overall_status !== 'cancelled';
+            await tx.notifications.createMany({
+              data: recipientIds.map((user_id) => ({
+                user_id,
+                activity_id: activityId,
+                title: enteredRescheduled
+                  ? 'Actividad reprogramada'
+                  : enteredCancelled
+                    ? 'Actividad cancelada'
+                    : 'Actualización de aprobación de actividad',
+                message: enteredRescheduled
+                  ? `La dirección de ${direction} reprogramó “${current.title ?? 'la actividad'}”. Las reservaciones asociadas volvieron a pendiente y deben revisarse.`
+                  : enteredCancelled
+                    ? `La dirección de ${direction} canceló “${current.title ?? 'la actividad'}”. Las reservaciones asociadas quedaron inactivas y liberadas.`
+                    : `La aprobación de ${direction} cambió a ${status}. Estado general: ${overall}.`,
+                type: enteredRescheduled
+                  ? 'activity_rescheduled'
+                  : enteredCancelled
+                    ? 'activity_cancelled'
+                    : 'activity_approval',
+              })),
+            });
+            return map(activity);
           },
-          update: { updated_at: new Date() },
-        });
+          { isolationLevel: 'Serializable' },
+        );
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034'
+        ) {
+          throw new RbacError(
+            'conflict',
+            'Las aprobaciones cambiaron al mismo tiempo; vuelve a enviar la decisión',
+          );
+        }
+        throw error;
       }
-      const recipients = await tx.activity_personnel.findMany({
-        where: { activity_id: activityId },
-        select: { user_id: true },
-      });
-      const recipientIds = [...new Set([current.creator_id, ...recipients.map(({ user_id }) => user_id)])];
-      await tx.notifications.createMany({
-        data: recipientIds.map((user_id) => ({
-          user_id,
-          activity_id: activityId,
-          title: 'Actualización de aprobación de actividad',
-          message: `La aprobación de ${direction} cambió a ${status}. Estado general: ${overall}.`,
-          type: 'activity_approval',
-        })),
-      });
-      return map(activity);
-    }));
+    });
   }
   async delete(activityId: string) {
     await prismaWrite(() =>

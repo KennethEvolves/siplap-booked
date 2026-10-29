@@ -39,7 +39,9 @@ const select = {
   },
 } satisfies Prisma.reservationsSelect;
 
-function map(row: Prisma.reservationsGetPayload<{ select: typeof select }>): Reservation {
+function map(
+  row: Prisma.reservationsGetPayload<{ select: typeof select }>,
+): Reservation {
   return {
     reservationId: row.reservation_id,
     title: row.title,
@@ -63,6 +65,60 @@ function map(row: Prisma.reservationsGetPayload<{ select: typeof select }>): Res
 
 function date(value: string | undefined) {
   return value === undefined ? undefined : new Date(value);
+}
+
+async function ensureSpacesAvailable(
+  tx: Prisma.TransactionClient,
+  spaceIds: string[],
+  startTime: Date,
+  endTime: Date,
+  excludeReservationId?: string,
+) {
+  if (spaceIds.length === 0) return;
+
+  const conflict = await tx.reservations.findFirst({
+    where: {
+      ...(excludeReservationId
+        ? { reservation_id: { not: excludeReservationId } }
+        : {}),
+      status: { in: ['pending', 'reserved', 'active', 'in_use'] },
+      start_time: { lt: endTime },
+      end_time: { gt: startTime },
+      reservation_spaces: {
+        some: { space_id: { in: spaceIds } },
+      },
+    },
+    select: {
+      title: true,
+      reservation_spaces: {
+        where: { space_id: { in: spaceIds } },
+        select: { spaces: { select: { name: true } } },
+      },
+    },
+  });
+
+  if (conflict) {
+    const spaceName = conflict.reservation_spaces[0]?.spaces.name;
+    throw new RbacError(
+      'conflict',
+      spaceName
+        ? `El espacio “${spaceName}” ya tiene una reservación en ese horario`
+        : 'Uno de los espacios ya tiene una reservación en ese horario',
+    );
+  }
+}
+
+function throwSerializableConflict(error: unknown): never {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2034'
+  ) {
+    throw new RbacError(
+      'conflict',
+      'La disponibilidad cambió al mismo tiempo; actualiza y vuelve a intentar',
+    );
+  }
+  throw error;
 }
 
 @Injectable()
@@ -115,18 +171,40 @@ export class PrismaReservationsRepository implements ReservationsRepository {
     }));
   }
 
-  async list(query: ReservationList, creatorId?: string, assignedActivityUserId?: string) {
-    const scope: Prisma.reservationsWhereInput = creatorId && assignedActivityUserId
-      ? { OR: [
-          { creator_id: creatorId },
-          { activities: { activity_personnel: { some: { user_id: assignedActivityUserId } } } },
-        ] }
-      : creatorId
-        ? { creator_id: creatorId }
-        : assignedActivityUserId
-          ? { activities: { activity_personnel: { some: { user_id: assignedActivityUserId } } } }
-          : {};
+  async list(
+    query: ReservationList,
+    creatorId?: string,
+    assignedActivityUserId?: string,
+  ) {
+    const scope: Prisma.reservationsWhereInput =
+      creatorId && assignedActivityUserId
+        ? {
+            OR: [
+              { creator_id: creatorId },
+              {
+                activities: {
+                  activity_personnel: {
+                    some: { user_id: assignedActivityUserId },
+                  },
+                },
+              },
+            ],
+          }
+        : creatorId
+          ? { creator_id: creatorId }
+          : assignedActivityUserId
+            ? {
+                activities: {
+                  activity_personnel: {
+                    some: { user_id: assignedActivityUserId },
+                  },
+                },
+              }
+            : {};
     const where: Prisma.reservationsWhereInput = { ...scope };
+    if (query.includeInactive !== 'true') {
+      where.status = { notIn: ['inactive', 'cancelled'] };
+    }
     if (query.endTime) where.start_time = { lt: new Date(query.endTime) };
     if (query.startTime) where.end_time = { gt: new Date(query.startTime) };
     const [rows, total] = await this.prisma.$transaction([
@@ -142,19 +220,37 @@ export class PrismaReservationsRepository implements ReservationsRepository {
     return { reservations: rows.map(map), total };
   }
 
-  async find(reservationId: string, creatorId?: string, assignedActivityUserId?: string) {
+  async find(
+    reservationId: string,
+    creatorId?: string,
+    assignedActivityUserId?: string,
+  ) {
     const row = await this.prisma.reservations.findFirst({
       where: {
         reservation_id: reservationId,
         ...(creatorId && assignedActivityUserId
-          ? { OR: [
-              { creator_id: creatorId },
-              { activities: { activity_personnel: { some: { user_id: assignedActivityUserId } } } },
-            ] }
+          ? {
+              OR: [
+                { creator_id: creatorId },
+                {
+                  activities: {
+                    activity_personnel: {
+                      some: { user_id: assignedActivityUserId },
+                    },
+                  },
+                },
+              ],
+            }
           : creatorId
             ? { creator_id: creatorId }
             : assignedActivityUserId
-              ? { activities: { activity_personnel: { some: { user_id: assignedActivityUserId } } } }
+              ? {
+                  activities: {
+                    activity_personnel: {
+                      some: { user_id: assignedActivityUserId },
+                    },
+                  },
+                }
               : {}),
       },
       select,
@@ -163,68 +259,94 @@ export class PrismaReservationsRepository implements ReservationsRepository {
   }
 
   async create(input: CreateReservation & { creatorId: string }) {
-    return prismaWrite(async () => this.prisma.$transaction(async (tx) => {
-      const spaceIds = [...new Set(input.spaceIds ?? [])];
-      const activeSpaceCount = await tx.spaces.count({
-        where: { space_id: { in: spaceIds }, status: 'active' },
-      });
-      if (activeSpaceCount !== spaceIds.length)
-        throw new RbacError('invalid', 'Todos los espacios deben existir y estar activos');
-      const linkedActivity = input.activityId
-        ? await tx.activities.findUnique({
-            where: { activity_id: input.activityId },
-            select: { overall_status: true },
-          })
-        : null;
-      if (input.activityId && !linkedActivity)
-        throw new RbacError('invalid', 'La actividad relacionada no existe');
-      const saved = await tx.reservations.create({
-          data: {
-            title: input.title,
-            description: input.description ?? null,
-            activity_id: input.activityId ?? null,
-            start_time: new Date(input.startTime),
-            end_time: new Date(input.endTime),
-            creator_id: input.creatorId,
-            status: linkedActivity?.overall_status === 'approved' ? 'reserved' : linkedActivity ? 'pending' : 'active',
+    return prismaWrite(async () => {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const spaceIds = [...new Set(input.spaceIds ?? [])];
+            const startTime = new Date(input.startTime);
+            const endTime = new Date(input.endTime);
+            const activeSpaceCount = await tx.spaces.count({
+              where: { space_id: { in: spaceIds }, status: 'active' },
+            });
+            if (activeSpaceCount !== spaceIds.length)
+              throw new RbacError(
+                'invalid',
+                'Todos los espacios deben existir y estar activos',
+              );
+            await ensureSpacesAvailable(tx, spaceIds, startTime, endTime);
+            const linkedActivity = input.activityId
+              ? await tx.activities.findUnique({
+                  where: { activity_id: input.activityId },
+                  select: { overall_status: true },
+                })
+              : null;
+            if (input.activityId && !linkedActivity)
+              throw new RbacError(
+                'invalid',
+                'La actividad relacionada no existe',
+              );
+            const saved = await tx.reservations.create({
+              data: {
+                title: input.title,
+                description: input.description ?? null,
+                activity_id: input.activityId ?? null,
+                start_time: startTime,
+                end_time: endTime,
+                creator_id: input.creatorId,
+                status:
+                  linkedActivity?.overall_status === 'approved'
+                    ? 'reserved'
+                    : linkedActivity
+                      ? 'pending'
+                      : 'active',
+              },
+              select,
+            });
+            if (spaceIds.length) {
+              await tx.reservation_spaces.createMany({
+                data: spaceIds.map((space_id) => ({
+                  reservation_id: saved.reservation_id,
+                  space_id,
+                })),
+              });
+            }
+            if (input.activityId) {
+              const recipients = await tx.activity_personnel.findMany({
+                where: { activity_id: input.activityId },
+                select: { user_id: true },
+              });
+              if (recipients.length) {
+                await tx.notifications.createMany({
+                  data: [
+                    ...new Set(recipients.map(({ user_id }) => user_id)),
+                  ].map((user_id) => ({
+                    user_id,
+                    activity_id: input.activityId,
+                    reservation_id: saved.reservation_id,
+                    title: 'Se solicitó un servicio para una actividad',
+                    message:
+                      'Se registró una reservación vinculada a una actividad en la que colaboras.',
+                    type: 'reservation_service_request',
+                  })),
+                });
+              }
+            }
+            // Return the reservation after its space relations have been persisted so
+            // the POST response matches the representation returned by subsequent GETs.
+            return map(
+              await tx.reservations.findUniqueOrThrow({
+                where: { reservation_id: saved.reservation_id },
+                select,
+              }),
+            );
           },
-          select,
-        });
-      if (spaceIds.length) {
-        await tx.reservation_spaces.createMany({
-          data: spaceIds.map((space_id) => ({
-            reservation_id: saved.reservation_id,
-            space_id,
-          })),
-        });
+          { isolationLevel: 'Serializable' },
+        );
+      } catch (error) {
+        throwSerializableConflict(error);
       }
-      if (input.activityId) {
-        const recipients = await tx.activity_personnel.findMany({
-          where: { activity_id: input.activityId },
-          select: { user_id: true },
-        });
-        if (recipients.length) {
-          await tx.notifications.createMany({
-            data: [...new Set(recipients.map(({ user_id }) => user_id))].map((user_id) => ({
-              user_id,
-              activity_id: input.activityId,
-              reservation_id: saved.reservation_id,
-              title: 'Se solicitó un servicio para una actividad',
-              message: 'Se registró una reservación vinculada a una actividad en la que colaboras.',
-              type: 'reservation_service_request',
-            })),
-          });
-        }
-      }
-      // Return the reservation after its space relations have been persisted so
-      // the POST response matches the representation returned by subsequent GETs.
-      return map(
-        await tx.reservations.findUniqueOrThrow({
-          where: { reservation_id: saved.reservation_id },
-          select,
-        }),
-      );
-    }));
+    });
   }
 
   async update(
@@ -232,61 +354,90 @@ export class PrismaReservationsRepository implements ReservationsRepository {
     input: UpdateReservation,
     creatorId?: string,
   ) {
-    return prismaWrite(() =>
-      this.prisma.$transaction(async (tx) => {
-        const where = {
-          reservation_id: reservationId,
-          ...(creatorId ? { creator_id: creatorId } : {}),
-        };
-        const existing = await tx.reservations.findFirst({ where, select });
-        if (!existing)
-          throw new RbacError('not_found', 'Reservación no encontrada');
+    return prismaWrite(async () => {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const where = {
+              reservation_id: reservationId,
+              ...(creatorId ? { creator_id: creatorId } : {}),
+            };
+            const existing = await tx.reservations.findFirst({ where, select });
+            if (!existing)
+              throw new RbacError('not_found', 'Reservación no encontrada');
 
-        const start = date(input.startTime) ?? existing.start_time;
-        const end = date(input.endTime) ?? existing.end_time;
-        if (start && end && end <= start)
-          throw new RbacError(
-            'invalid',
-            'La fecha final debe ser posterior a la inicial',
-          );
+            const start = date(input.startTime) ?? existing.start_time;
+            const end = date(input.endTime) ?? existing.end_time;
+            if (start && end && end <= start)
+              throw new RbacError(
+                'invalid',
+                'La fecha final debe ser posterior a la inicial',
+              );
 
-        if (input.spaceIds !== undefined) {
-          const spaceIds = [...new Set(input.spaceIds)];
-          const activeSpaceCount = await tx.spaces.count({
-            where: { space_id: { in: spaceIds }, status: 'active' },
-          });
-          if (activeSpaceCount !== spaceIds.length)
-            throw new RbacError('invalid', 'Todos los espacios deben existir y estar activos');
-          await tx.reservation_spaces.deleteMany({
-            where: { reservation_id: reservationId },
-          });
-          if (spaceIds.length) {
-            await tx.reservation_spaces.createMany({
-              data: spaceIds.map((space_id) => ({
-                reservation_id: reservationId,
-                space_id,
-              })),
-            });
-          }
-        }
+            const nextSpaceIds =
+              input.spaceIds ??
+              existing.reservation_spaces.map(({ spaces }) => spaces.space_id);
+            const nextStatus = input.status ?? existing.status;
+            if (
+              start &&
+              end &&
+              nextStatus &&
+              ['pending', 'reserved', 'active', 'in_use'].includes(nextStatus)
+            ) {
+              await ensureSpacesAvailable(
+                tx,
+                nextSpaceIds,
+                start,
+                end,
+                reservationId,
+              );
+            }
 
-        return map(
-          await tx.reservations.update({
-            where: { reservation_id: reservationId },
-            data: {
-              title: input.title,
-              description: input.description,
-              activity_id: input.activityId,
-              status: input.status,
-              start_time: date(input.startTime),
-              end_time: date(input.endTime),
-              updated_at: new Date(),
-            },
-            select,
-          }),
+            if (input.spaceIds !== undefined) {
+              const spaceIds = [...new Set(input.spaceIds)];
+              const activeSpaceCount = await tx.spaces.count({
+                where: { space_id: { in: spaceIds }, status: 'active' },
+              });
+              if (activeSpaceCount !== spaceIds.length)
+                throw new RbacError(
+                  'invalid',
+                  'Todos los espacios deben existir y estar activos',
+                );
+              await tx.reservation_spaces.deleteMany({
+                where: { reservation_id: reservationId },
+              });
+              if (spaceIds.length) {
+                await tx.reservation_spaces.createMany({
+                  data: spaceIds.map((space_id) => ({
+                    reservation_id: reservationId,
+                    space_id,
+                  })),
+                });
+              }
+            }
+
+            return map(
+              await tx.reservations.update({
+                where: { reservation_id: reservationId },
+                data: {
+                  title: input.title,
+                  description: input.description,
+                  activity_id: input.activityId,
+                  status: input.status,
+                  start_time: date(input.startTime),
+                  end_time: date(input.endTime),
+                  updated_at: new Date(),
+                },
+                select,
+              }),
+            );
+          },
+          { isolationLevel: 'Serializable' },
         );
-      }),
-    );
+      } catch (error) {
+        throwSerializableConflict(error);
+      }
+    });
   }
 
   async delete(reservationId: string, creatorId?: string) {

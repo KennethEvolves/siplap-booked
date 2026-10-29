@@ -9,15 +9,37 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/Button';
-import { BackendReservation, ReservationCreatorOption } from '@/lib/api';
+import { BackendActivity, BackendReservation, CreateReservationInput, ReservationCreatorOption, ReservationSpaceOption } from '@/lib/api';
 
 interface ReservationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: CreateReservationInput) => Promise<void>;
   initialData?: BackendReservation | null;
   canManage?: boolean;
   creatorsList?: ReservationCreatorOption[];
+  spaces?: ReservationSpaceOption[];
+  activities?: BackendActivity[];
+}
+
+function formatForInput(dateInput?: string | Date | null) {
+  if (!dateInput) return '';
+  try {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  } catch {
+    return '';
+  }
+}
+
+function getDefaultDates() {
+  const now = new Date();
+  now.setHours(now.getHours() + 1, 0, 0, 0);
+  const startStr = formatForInput(now);
+  const end = new Date(now);
+  end.setHours(end.getHours() + 1);
+  return { startStr, endStr: formatForInput(end) };
 }
 
 export function ReservationModal({
@@ -27,6 +49,8 @@ export function ReservationModal({
   initialData,
   canManage = false,
   creatorsList = [],
+  spaces = [],
+  activities = [],
 }: ReservationModalProps) {
   const isEditMode = Boolean(initialData);
 
@@ -36,42 +60,15 @@ export function ReservationModal({
     startTime: '',
     endTime: '',
     creatorId: '',
+    activityId: '',
+    spaceIds: [] as string[],
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Convierte cadenas ISO o Date a YYYY-MM-DDTHH:mm en hora local
-  const formatForInput = (dateInput?: string | Date | null) => {
-    if (!dateInput) return '';
-    try {
-      const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      const year = d.getFullYear();
-      const month = pad(d.getMonth() + 1);
-      const day = pad(d.getDate());
-      const hours = pad(d.getHours());
-      const minutes = pad(d.getMinutes());
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    } catch {
-      return '';
-    }
-  };
-
-  // Valores predeterminados sugeridos (siguiente hora redonda)
-  const getDefaultDates = () => {
-    const now = new Date();
-    // Redondea a la siguiente hora completa
-    now.setHours(now.getHours() + 1, 0, 0, 0);
-    const startStr = formatForInput(now);
-
-    const end = new Date(now);
-    end.setHours(end.getHours() + 1);
-    const endStr = formatForInput(end);
-
-    return { startStr, endStr };
-  };
-
+  // Este efecto sincroniza el formulario controlado con el registro que se abre.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setFormError(null);
     if (initialData) {
@@ -81,6 +78,8 @@ export function ReservationModal({
         startTime: formatForInput(initialData.startTime),
         endTime: formatForInput(initialData.endTime),
         creatorId: initialData.creator?.userId || '',
+        activityId: initialData.activityId || '',
+        spaceIds: initialData.spaces?.map((space) => space.spaceId) || [],
       });
     } else {
       const { startStr, endStr } = getDefaultDates();
@@ -90,9 +89,12 @@ export function ReservationModal({
         startTime: startStr,
         endTime: endStr,
         creatorId: '',
+        activityId: '',
+        spaceIds: [],
       });
     }
   }, [initialData, isOpen]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,11 +120,13 @@ export function ReservationModal({
 
     setIsSubmitting(true);
     try {
-      const payload: any = {
+      const payload: CreateReservationInput = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
+        activityId: formData.activityId || null,
+        spaceIds: formData.spaceIds,
       };
 
       // Únicamente incluimos creatorId al CREAR
@@ -132,8 +136,8 @@ export function ReservationModal({
 
       await onSave(payload);
       onClose();
-    } catch (error: any) {
-      setFormError(error?.message || 'Error al procesar la reservación.');
+    } catch (error: unknown) {
+      setFormError(error instanceof Error ? error.message : 'Error al procesar la reservación.');
     } finally {
       setIsSubmitting(false);
     }
@@ -182,6 +186,19 @@ export function ReservationModal({
               </p>
             </div>
           )}
+
+          {activities.length > 0 && <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Vincular a actividad (opcional)</label>
+            <select className="w-full rounded-xl border border-gray-200 p-2.5 text-sm" value={formData.activityId} onChange={(event) => setFormData({ ...formData, activityId: event.target.value })}>
+              <option value="">Sin actividad vinculada</option>
+              {activities.map((activity) => <option key={activity.activityId} value={activity.activityId}>{activity.title || 'Actividad sin título'}</option>)}
+            </select>
+          </div>}
+
+          <fieldset className="space-y-2 rounded-xl border border-gray-200 p-3">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Espacios universitarios</legend>
+            {spaces.length ? <div className="max-h-36 space-y-2 overflow-y-auto">{spaces.map((space) => <label key={space.spaceId} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={formData.spaceIds.includes(space.spaceId)} onChange={(event) => setFormData({ ...formData, spaceIds: event.target.checked ? [...formData.spaceIds, space.spaceId] : formData.spaceIds.filter((id) => id !== space.spaceId) })} /><span>{space.name || 'Espacio sin nombre'}{space.capacity ? ` · capacidad ${space.capacity}` : ''}</span></label>)}</div> : <p className="text-xs text-gray-500">No se pudieron cargar espacios o no hay espacios disponibles.</p>}
+          </fieldset>
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">

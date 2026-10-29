@@ -7,7 +7,10 @@ import { NestFactory } from '@nestjs/core';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../dist/generated/prisma/client.js';
 import { AppModule } from '../dist/app.module.js';
-import { ACTIVITY_PERMISSIONS as P } from '@shared/contracts';
+import {
+  ACTIVITY_PERMISSIONS as P,
+  RESERVATION_PERMISSIONS as RP,
+} from '@shared/contracts';
 
 // Run only against a disposable/local development database. Fixture IDs delimit cleanup.
 const databaseUrl = new URL(process.env.DATABASE_URL);
@@ -19,7 +22,9 @@ const prisma = new PrismaClient({
 const prefix = 'activity-test-' + randomUUID();
 const userIds = [],
   roleIds = [],
-  createdPermissionIds = [];
+  createdPermissionIds = [],
+  reservationIds = [],
+  spaceIds = [];
 let app;
 let checks = 0;
 try {
@@ -27,7 +32,7 @@ try {
     where: { name: 'ACTIVE' },
   });
   const permissionIds = new Map();
-  for (const slug of Object.values(P)) {
+  for (const slug of [...Object.values(P), ...Object.values(RP)]) {
     let permission = await prisma.permissions.findFirst({ where: { slug } });
     if (!permission) {
       permission = await prisma.permissions.create({ data: { slug } });
@@ -39,7 +44,7 @@ try {
   const hash = await bcrypt.hash(password, 10);
   const actors = {};
   for (const [name, slugs] of Object.entries({
-    superuser: [P.manage],
+    superuser: [P.manage, RP.manage],
     directive: [
       P.viewAll,
       P.updateAll,
@@ -74,6 +79,10 @@ try {
       });
     actors[name] = { user, role };
   }
+  const testSpace = await prisma.spaces.create({
+    data: { name: prefix, capacity: 1, status: 'active' },
+  });
+  spaceIds.push(testSpace.space_id);
   app = await NestFactory.create(AppModule, { logger: false });
   await app.listen(0, '127.0.0.1');
   const origin = await app.getUrl();
@@ -150,6 +159,75 @@ try {
       201,
     )
   ).activity;
+  const concurrentBodies = [own, delegated].map((activity) => ({
+    title: `${prefix}-concurrent-${activity.activityId.slice(0, 6)}`,
+    description: null,
+    activityId: activity.activityId,
+    creatorId: superuser.user.user_id,
+    spaceIds: [testSpace.space_id],
+    startTime: '2027-01-10T16:00:00.000Z',
+    endTime: '2027-01-10T17:00:00.000Z',
+  }));
+  const concurrentResponses = await Promise.all(
+    concurrentBodies.map(async (body) => {
+      const response = await fetch(origin + '/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${superuser.token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const text = await response.text();
+      const payload = text ? JSON.parse(text) : null;
+      checks++;
+      return { status: response.status, payload };
+    }),
+  );
+  assert.deepEqual(
+    concurrentResponses
+      .map(({ status }) => status)
+      .sort((left, right) => left - right),
+    [201, 409],
+    'Dos reservas concurrentes para el mismo espacio y horario deben producir una creación y un conflicto',
+  );
+  for (const { payload } of concurrentResponses) {
+    if (payload?.reservation?.reservationId)
+      reservationIds.push(payload.reservation.reservationId);
+  }
+  const linkedReservation = await call(
+    superuser,
+    'POST',
+    '/api/reservations',
+    {
+      title: `${prefix}-linked-reservation`,
+      description: null,
+      activityId: foreign.activityId,
+      creatorId: superuser.user.user_id,
+      spaceIds: [testSpace.space_id],
+      startTime: '2026-10-20T16:00:00.000Z',
+      endTime: '2026-10-21T17:00:00.000Z',
+    },
+    201,
+  );
+  const linkedReservationId = linkedReservation.reservation.reservationId;
+  reservationIds.push(linkedReservationId);
+  assert.equal(linkedReservation.reservation.status, 'pending');
+  await call(
+    superuser,
+    'POST',
+    '/api/reservations',
+    {
+      title: `${prefix}-overlap`,
+      description: null,
+      activityId: own.activityId,
+      creatorId: superuser.user.user_id,
+      spaceIds: [testSpace.space_id],
+      startTime: '2026-10-20T16:30:00.000Z',
+      endTime: '2026-10-20T17:30:00.000Z',
+    },
+    409,
+  );
   assert.equal(delegated.creator.userId, lead.user.user_id);
   const reassigned = await call(
     superuser,
@@ -222,8 +300,15 @@ try {
     lead,
     'PATCH',
     base + '/' + own.activityId + '/approval',
-    { status: 'approved' },
+    { direction: 'planning', status: 'approved' },
     403,
+  );
+  await call(
+    directive,
+    'PATCH',
+    base + '/' + foreign.activityId + '/approval',
+    { direction: 'planning', status: 'rescheduled' },
+    400,
   );
   await call(lead, 'DELETE', base + '/' + own.activityId, undefined, 403);
   await call(directive, 'GET', base + '/' + foreign.activityId, undefined, 200);
@@ -250,36 +335,127 @@ try {
     undefined,
     403,
   );
-  for (const status of ['approved', 'rejected', 'cancelled', 'rescheduled']) {
+  const decisions = [
+    { direction: 'planning', status: 'approved', overall: 'pending' },
+    { direction: 'academic', status: 'approved', overall: 'pending' },
+    { direction: 'administrative', status: 'approved', overall: 'approved' },
+    {
+      direction: 'planning',
+      status: 'rescheduled',
+      startDate: '2026-11-02',
+      endDate: '2026-11-04',
+      overall: 'rescheduled',
+    },
+  ];
+  for (const { overall, ...decision } of decisions) {
     const response = await call(
       directive,
       'PATCH',
       base + '/' + foreign.activityId + '/approval',
-      { status },
+      decision,
       200,
     );
-    assert.equal(response.activity.status, status);
+    assert.equal(response.activity.status, overall);
     assert.equal(
       (
         await prisma.activities.findUniqueOrThrow({
           where: { activity_id: foreign.activityId },
         })
       ).overall_status,
-      status,
+      overall,
     );
   }
+  const afterReschedule = await prisma.activities.findUniqueOrThrow({
+    where: { activity_id: foreign.activityId },
+  });
+  assert.equal(
+    afterReschedule.start_date.toISOString().slice(0, 10),
+    '2026-11-02',
+  );
+  assert.equal(
+    afterReschedule.end_date.toISOString().slice(0, 10),
+    '2026-11-04',
+  );
+  assert.equal(afterReschedule.planning_approved, 'rescheduled');
+  assert.equal(afterReschedule.academic_approved, 'pending');
+  assert.equal(afterReschedule.admin_approved, 'pending');
+  const shiftedReservation = await call(
+    superuser,
+    'GET',
+    '/api/reservations/' + linkedReservationId,
+    undefined,
+    200,
+  );
+  assert.equal(shiftedReservation.reservation.status, 'pending');
+  assert.equal(
+    shiftedReservation.reservation.startTime,
+    '2026-11-02T16:00:00.000Z',
+  );
+  assert.equal(
+    shiftedReservation.reservation.endTime,
+    '2026-11-04T17:00:00.000Z',
+  );
   await call(
     directive,
     'PATCH',
     base + '/' + foreign.activityId + '/approval',
-    { status: 'unknown' },
+    { direction: 'administrative', status: 'cancelled' },
+    200,
+  );
+  assert.equal(
+    (
+      await prisma.activities.findUniqueOrThrow({
+        where: { activity_id: foreign.activityId },
+      })
+    ).overall_status,
+    'cancelled',
+  );
+  const cancelledReservation = await call(
+    superuser,
+    'GET',
+    '/api/reservations/' + linkedReservationId,
+    undefined,
+    200,
+  );
+  assert.equal(cancelledReservation.reservation.status, 'inactive');
+  const defaultReservations = await call(
+    superuser,
+    'GET',
+    '/api/reservations?page=1&limit=100',
+    undefined,
+    200,
+  );
+  assert.equal(
+    defaultReservations.reservations.some(
+      (item) => item.reservationId === linkedReservationId,
+    ),
+    false,
+  );
+  const historyReservations = await call(
+    superuser,
+    'GET',
+    '/api/reservations?page=1&limit=100&includeInactive=true',
+    undefined,
+    200,
+  );
+  assert.equal(
+    historyReservations.reservations.some(
+      (item) => item.reservationId === linkedReservationId,
+    ),
+    true,
+  );
+  await call(
+    directive,
+    'PATCH',
+    base + '/' + foreign.activityId + '/approval',
+    { direction: 'planning', status: 'unknown' },
     400,
   );
   await call(
     superuser,
     'PATCH',
     base + '/' + foreign.activityId + '/approval',
-    { status: 'approved' },
+    { direction: 'planning', status: 'approved' },
     200,
   );
   const caps = await call(
@@ -318,6 +494,15 @@ try {
   );
   await call(lead, 'GET', base + '/invalid-id', undefined, 400);
   await call(lead, 'GET', '/activities/' + own.activityId, undefined, 200);
+  const deletable = (
+    await call(
+      lead,
+      'POST',
+      base,
+      { ...input, title: `${prefix}-deletable` },
+      201,
+    )
+  ).activity;
   await prisma.role_permissions.delete({
     where: {
       role_id_permission_id: {
@@ -336,13 +521,13 @@ try {
   await call(
     superuser,
     'DELETE',
-    base + '/' + foreign.activityId,
+    base + '/' + deletable.activityId,
     undefined,
     204,
   );
   assert.equal(
     await prisma.activities.findUnique({
-      where: { activity_id: foreign.activityId },
+      where: { activity_id: deletable.activityId },
     }),
     null,
   );
@@ -351,6 +536,13 @@ try {
   );
 } finally {
   if (app) await app.close();
+  await prisma.reservation_spaces.deleteMany({
+    where: { reservation_id: { in: reservationIds } },
+  });
+  await prisma.reservations.deleteMany({
+    where: { reservation_id: { in: reservationIds } },
+  });
+  await prisma.spaces.deleteMany({ where: { space_id: { in: spaceIds } } });
   await prisma.activities.deleteMany({
     where: { creator_id: { in: userIds } },
   });

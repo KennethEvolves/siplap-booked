@@ -2538,7 +2538,7 @@ export interface activitiesFieldRefs {
   readonly updated_at: Prisma.FieldRef<"activities", 'DateTime'>
   readonly creator_id: Prisma.FieldRef<"activities", 'String'>
 }
-
+    
 
 // Custom InputTypes
 /**

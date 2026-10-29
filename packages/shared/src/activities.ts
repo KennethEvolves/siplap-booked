@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { externalLocationSchema } from './external-locations.js';
+import { externalLocationSchema } from "./external-locations.js";
 
 export const ACTIVITY_PERMISSIONS = {
   manage: "activity:manage",
@@ -40,18 +40,53 @@ export const createActivitySchema = fields
   })
   .refine(ordered, "La fecha final no puede ser anterior a la inicial")
   .refine(
-    (value) => !value.externalLocations || new Set(value.externalLocations.map((location) => location.googlePlaceId)).size === value.externalLocations.length,
-    'No repitas ubicaciones en la misma actividad',
+    (value) =>
+      !value.externalLocations ||
+      new Set(value.externalLocations.map((location) => location.googlePlaceId))
+        .size === value.externalLocations.length,
+    "No repitas ubicaciones en la misma actividad",
   );
 export const updateActivitySchema = fields
   .partial()
   .extend({ creatorId: z.uuid().optional() })
   .refine((data) => Object.keys(data).length > 0, "Envía al menos un campo")
   .refine(ordered, "La fecha final no puede ser anterior a la inicial");
-export const approveActivitySchema = z.strictObject({
-  direction: z.enum(['planning', 'academic', 'administrative']),
-  status: z.enum(["approved", "rejected", "cancelled", "rescheduled"]),
-});
+export const approveActivitySchema = z
+  .strictObject({
+    direction: z.enum(["planning", "academic", "administrative"]),
+    status: z.enum(["approved", "rejected", "cancelled", "rescheduled"]),
+    startDate: date.optional(),
+    endDate: date.optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.status === "rescheduled") {
+      if (!value.startDate)
+        context.addIssue({
+          code: "custom",
+          path: ["startDate"],
+          message: "Indica la nueva fecha de inicio",
+        });
+      if (!value.endDate)
+        context.addIssue({
+          code: "custom",
+          path: ["endDate"],
+          message: "Indica la nueva fecha de término",
+        });
+      if (value.startDate && value.endDate && value.endDate < value.startDate) {
+        context.addIssue({
+          code: "custom",
+          path: ["endDate"],
+          message: "La fecha final no puede ser anterior a la inicial",
+        });
+      }
+    } else if (value.startDate || value.endDate) {
+      context.addIssue({
+        code: "custom",
+        path: ["status"],
+        message: "Solo una reprogramación puede incluir nuevas fechas",
+      });
+    }
+  });
 export const activityListSchema = z.strictObject({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -62,8 +97,8 @@ export const activityPersonnelSchema = z.strictObject({
 export type CreateActivity = z.infer<typeof createActivitySchema>;
 export type UpdateActivity = z.infer<typeof updateActivitySchema>;
 export type ApproveActivity = z.infer<typeof approveActivitySchema>;
-export type ActivityApprovalDirection = ApproveActivity['direction'];
-export type ActivityApprovalStatus = ApproveActivity['status'] | 'pending';
+export type ActivityApprovalDirection = ApproveActivity["direction"];
+export type ActivityApprovalStatus = ApproveActivity["status"] | "pending";
 export type ActivityList = z.infer<typeof activityListSchema>;
 export type ActivityPersonnelInput = z.infer<typeof activityPersonnelSchema>;
 export interface ActivityPersonnelMember {

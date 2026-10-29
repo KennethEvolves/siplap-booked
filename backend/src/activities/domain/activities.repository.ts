@@ -7,7 +7,6 @@ import type {
   ExternalLocation,
   ExternalLocationInput,
   ApproveActivity,
-  ActivityApprovalDirection,
   CreateActivity,
   UpdateActivity,
 } from '@shared/contracts';
@@ -24,9 +23,7 @@ export abstract class ActivitiesRepository {
     creatorId?: string,
     assignedUserId?: string,
   ): Promise<Activity | null>;
-  abstract creators(
-    query: ActivityList,
-  ): Promise<{
+  abstract creators(query: ActivityList): Promise<{
     users: { userId: string; username: string | null }[];
     total: number;
   }>;
@@ -41,7 +38,9 @@ export abstract class ActivitiesRepository {
     activityId: string,
     locationId: string,
   ): Promise<void>;
-  abstract activityPersonnel(activityId: string): Promise<ActivityPersonnelMember[]>;
+  abstract activityPersonnel(
+    activityId: string,
+  ): Promise<ActivityPersonnelMember[]>;
   abstract setActivityPersonnel(
     activityId: string,
     input: ActivityPersonnelInput,
@@ -56,8 +55,7 @@ export abstract class ActivitiesRepository {
   ): Promise<Activity>;
   abstract approve(
     activityId: string,
-    direction: ActivityApprovalDirection,
-    status: ApproveActivity['status'],
+    input: ApproveActivity,
   ): Promise<Activity>;
   abstract delete(activityId: string): Promise<void>;
 }

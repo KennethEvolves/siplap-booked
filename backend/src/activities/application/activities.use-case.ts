@@ -146,9 +146,13 @@ export class ActivitiesUseCase {
       policy,
     );
   }
-  async approve(userId: string, activityId: string, input: ApproveActivity) {
+async approve(userId: string, activityId: string, input: ApproveActivity) {
     const policy = await this.policy(userId);
+    
     this.require(policy.canApprove);
+
+    this.require(policy.canApproveDirection(input.direction as any));
+
     return this.present(
       await this.repository.approve(activityId, input),
       policy,

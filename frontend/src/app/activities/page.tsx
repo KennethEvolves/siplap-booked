@@ -7,6 +7,7 @@ import React, {
   useTransition,
   useMemo,
 } from "react";
+import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { ActivityModal } from "@/components/activities/ActivityModal";
 import { Button } from "@/components/ui/Button";
@@ -24,14 +25,12 @@ import {
   ActivityApprovalDecision,
   ActivityApprovalDirection,
   getActivities,
-  createActivity,
   updateActivity,
   updateActivityApproval,
   attachActivityExternalLocations,
   getActivityExternalLocations,
   removeActivityExternalLocation,
   setActivityPersonnel,
-  createReservation,
 } from "@/lib/api";
 import {
   Loader2,
@@ -39,16 +38,14 @@ import {
   AlertTriangle,
   ShieldCheck,
   Pencil,
+  Plus,
 } from "lucide-react";
 
 export default function ActivitiesPage() {
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(
-    undefined,
-  );
-  const [currentUsername, setCurrentUsername] = useState<string | undefined>(
-    undefined,
-  );
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [currentUsername, setCurrentUsername] = useState<string | undefined>(undefined);
+  const [userDepartment, setUserDepartment] = useState<string | undefined>(undefined);
 
   const [activities, setActivities] = useState<BackendActivity[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -64,18 +61,15 @@ export default function ActivitiesPage() {
   const [, startTransition] = useTransition();
 
   // Estado para edición en modal
-  const [editingActivity, setEditingActivity] =
-    useState<BackendActivity | null>(null);
+  const [editingActivity, setEditingActivity] = useState<BackendActivity | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [approvalDirections, setApprovalDirections] = useState<
+  
+  // Dirección elegida manualmente solo por superusuarios
+  const [superUserDirections, setSuperUserDirections] = useState<
     Record<string, ActivityApprovalDirection>
   >({});
-  const [savingApprovalFor, setSavingApprovalFor] = useState<string | null>(
-    null,
-  );
-  const [reschedulingActivity, setReschedulingActivity] = useState<
-    string | null
-  >(null);
+  const [savingApprovalFor, setSavingApprovalFor] = useState<string | null>(null);
+  const [reschedulingActivity, setReschedulingActivity] = useState<string | null>(null);
   const [rescheduleDates, setRescheduleDates] = useState<
     Record<string, { startDate: string; endDate: string }>
   >({});
@@ -85,9 +79,7 @@ export default function ActivitiesPage() {
     setTimeout(() => setToastMessage(null), 3500);
   }, []);
 
-  // =========================================================================
-  // MATRIZ RBAC (Evaluación granular basada en permisos de sesión)
-  // =========================================================================
+  // Matriz RBAC
   const isSuperUser = useMemo(() => {
     return (
       permissions.includes("manage:all") ||
@@ -115,10 +107,18 @@ export default function ActivitiesPage() {
     return permissions.includes("activity:update_own");
   }, [permissions]);
 
-  // Si puede ver todo, se habilitan las pestañas para alternar
   const canShowAllTabs = canViewAll || isSuperUser;
 
-  // Comprobar si el usuario puede editar una actividad específica
+  // Detección institucional de la dirección a partir del departamento del usuario
+  const assignedDirection = useMemo<ActivityApprovalDirection | null>(() => {
+    if (isSuperUser) return null; // El superusuario conserva la opción de auditar cualquier área
+    const dept = (userDepartment || "").toLowerCase();
+    if (dept.includes("acad")) return "academic";
+    if (dept.includes("admin")) return "administrative";
+    if (dept.includes("plan")) return "planning";
+    return "planning"; // Valor institucional por defecto si es directivo sin clasificar
+  }, [isSuperUser, userDepartment]);
+
   const canEditActivity = (activity: BackendActivity) => {
     if (canEditAll) return true;
     if (canEditOwn) {
@@ -134,16 +134,13 @@ export default function ActivitiesPage() {
     return false;
   };
 
-  // Nivel de alcance institucional para la cabecera
   const roleScope = useMemo<"superuser" | "directive" | "lead">(() => {
     if (isSuperUser) return "superuser";
     if (canApprove || canViewAll) return "directive";
     return "lead";
   }, [isSuperUser, canApprove, canViewAll]);
 
-  // =========================================================================
-  // CARGA DE DATOS
-  // =========================================================================
+  // Carga de datos
   const refreshData = useCallback(async () => {
     try {
       setLoading(true);
@@ -151,6 +148,7 @@ export default function ActivitiesPage() {
       let fetchedPermissions: string[] = [];
       let userId: string | undefined = undefined;
       let username: string | undefined = undefined;
+      let departmentName: string | undefined = undefined;
 
       try {
         const { getSession } = await import("next-auth/react");
@@ -159,10 +157,12 @@ export default function ActivitiesPage() {
         fetchedPermissions = session?.user?.permissions || [];
         userId = session?.user?.id;
         username = session?.user?.name || undefined;
+        departmentName = (session?.user as any)?.department || (session?.user as any)?.departmentName;
 
         setPermissions(fetchedPermissions);
         setCurrentUserId(userId);
         setCurrentUsername(username);
+        setUserDepartment(departmentName);
       } catch (err) {
         console.error("Error al sincronizar sesión:", err);
       }
@@ -172,16 +172,12 @@ export default function ActivitiesPage() {
         fetchedPermissions.includes("activity:manage") ||
         fetchedPermissions.includes("activity:view_all");
 
-      // Los superusuarios suelen registrar actividades asignándolas a otros
-      // usuarios. Abrir la vista global evita que parezcan desaparecer de
-      // "Mis Actividades", que filtra por el creador asignado.
       setActiveTab(hasAccessToAll ? "all" : "mine");
 
       const actRes = await getActivities();
       if (actRes?.activities && Array.isArray(actRes.activities)) {
         let list = actRes.activities;
 
-        // Si el rol operativo no tiene permiso de ver todo, filtramos localmente
         if (!hasAccessToAll) {
           list = list.filter((act) => {
             const matchesId =
@@ -208,9 +204,6 @@ export default function ActivitiesPage() {
     return () => window.clearTimeout(initialLoad);
   }, [refreshData]);
 
-  // =========================================================================
-  // CREACIÓN Y EDICIÓN
-  // =========================================================================
   const handleSaveActivity = async (
     data: {
       title: string;
@@ -242,88 +235,31 @@ export default function ActivitiesPage() {
         });
 
         if (res?.activity) {
-          const existingLocations = await getActivityExternalLocations(
-            activityId,
-          ).catch(() => ({ locations: [] }));
-          const selectedPlaceIds = new Set(
-            data.externalLocations.map((location) => location.googlePlaceId),
-          );
+          const existingLocations = await getActivityExternalLocations(activityId).catch(() => ({ locations: [] }));
+          const selectedPlaceIds = new Set(data.externalLocations.map((l) => l.googlePlaceId));
+          
           await Promise.all(
             existingLocations.locations
-              .filter(
-                (location) => !selectedPlaceIds.has(location.googlePlaceId),
-              )
-              .map((location) =>
-                removeActivityExternalLocation(activityId, location.locationId),
-              ),
+              .filter((l) => !selectedPlaceIds.has(l.googlePlaceId))
+              .map((l) => removeActivityExternalLocation(activityId, l.locationId))
           );
-          const knownPlaceIds = new Set(
-            existingLocations.locations.map(
-              (location) => location.googlePlaceId,
-            ),
-          );
-          const newLocations = data.externalLocations.filter(
-            (location) => !knownPlaceIds.has(location.googlePlaceId),
-          );
-          if (newLocations.length)
-            await attachActivityExternalLocations(activityId, newLocations);
-          if (isSuperUser)
-            await setActivityPersonnel(activityId, data.personnelIds);
+          
+          const knownPlaceIds = new Set(existingLocations.locations.map((l) => l.googlePlaceId));
+          const newLocations = data.externalLocations.filter((l) => !knownPlaceIds.has(l.googlePlaceId));
+          
+          if (newLocations.length) await attachActivityExternalLocations(activityId, newLocations);
+          if (isSuperUser) await setActivityPersonnel(activityId, data.personnelIds);
+          
           startTransition(() => {
             setActivities((prev) =>
-              prev.map((a) => (a.activityId === activityId ? res.activity : a)),
+              prev.map((a) => (a.activityId === activityId ? res.activity : a))
             );
           });
           showToast("success", "Actividad actualizada exitosamente.");
         }
-      } else {
-        if (!canCreate) {
-          showToast("error", "No cuentas con permiso para crear actividades.");
-          return;
-        }
-
-        const res = await createActivity({
-          title: data.title,
-          description: data.description || null,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          ...(validCreatorId ? { creatorId: validCreatorId } : {}),
-          externalLocations: data.externalLocations,
-        });
-
-        if (res?.activity) {
-          if (data.personnelIds.length)
-            await setActivityPersonnel(
-              res.activity.activityId,
-              data.personnelIds,
-            );
-          if (
-            data.spaceIds.length &&
-            data.reserveStartTime &&
-            data.reserveEndTime
-          ) {
-            await createReservation({
-              title: data.title,
-              description: data.description || null,
-              activityId: res.activity.activityId,
-              startTime: new Date(data.reserveStartTime).toISOString(),
-              endTime: new Date(data.reserveEndTime).toISOString(),
-              ...(validCreatorId ? { creatorId: validCreatorId } : {}),
-              spaceIds: data.spaceIds,
-            });
-          }
-          setActivities((prev) => [res.activity, ...prev]);
-          showToast(
-            "success",
-            "Actividad guardada. Ubicaciones, colaboradores y reservación vinculada sincronizados.",
-          );
-        }
       }
     } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Error al guardar la actividad o permisos insuficientes.";
+      const message = error instanceof Error ? error.message : "Error al actualizar la actividad.";
       showToast("error", message);
     }
   };
@@ -335,10 +271,7 @@ export default function ActivitiesPage() {
     dates?: { startDate: string; endDate: string },
   ) => {
     if (!canApprove) {
-      showToast(
-        "error",
-        "No cuentas con privilegios de dictamen para autorizar o rechazar.",
-      );
+      showToast("error", "No cuentas con privilegios de dictamen para autorizar o rechazar.");
       return;
     }
 
@@ -360,7 +293,13 @@ export default function ActivitiesPage() {
       setReschedulingActivity(null);
       showToast(
         "success",
-        `Dictamen de ${direction === "planning" ? "Planeación" : direction === "academic" ? "Académica" : "Administración"} guardado. Estado global: ${updatedActivity.status}.`,
+        `Dictamen de ${
+          direction === "planning"
+            ? "Planeación"
+            : direction === "academic"
+            ? "Académica"
+            : "Administración"
+        } registrado.`,
       );
     } catch (error) {
       await refreshData();
@@ -368,18 +307,14 @@ export default function ActivitiesPage() {
         "error",
         error instanceof Error
           ? error.message
-          : "No se pudo guardar el dictamen. Actualiza la lista e inténtalo de nuevo.",
+          : "No se pudo guardar el dictamen institucional.",
       );
     } finally {
       setSavingApprovalFor(null);
     }
   };
 
-  // =========================================================================
-  // FILTRADO DINÁMICO CORREGIDO
-  // =========================================================================
   const filteredActivities = activities.filter((activity) => {
-    // En la pestaña "Mis Actividades", comparamos de forma estricta la autoría del registro
     if (canShowAllTabs && activeTab === "mine") {
       const matchesUserId =
         currentUserId &&
@@ -391,9 +326,7 @@ export default function ActivitiesPage() {
         activity.creator?.username?.trim().toLowerCase() ===
           currentUsername.trim().toLowerCase();
 
-      const isActuallyMine = Boolean(matchesUserId || matchesUsername);
-
-      if (!isActuallyMine) return false;
+      if (!Boolean(matchesUserId || matchesUsername)) return false;
     }
 
     if (filterStatus === "TODOS") return true;
@@ -401,62 +334,36 @@ export default function ActivitiesPage() {
   });
 
   const getStatusBadge = (status: BackendActivityStatus) => {
-    const base =
-      "inline-block whitespace-nowrap px-3 py-1 text-xs rounded-full font-semibold border";
+    const base = "inline-block whitespace-nowrap px-3 py-1 text-xs rounded-full font-semibold border";
     switch (status) {
       case "approved":
-        return (
-          <span
-            className={`${base} bg-uno-verde text-uno-negro border-uno-olivo`}
-          >
-            Aprobado
-          </span>
-        );
+        return <span className={`${base} bg-uno-verde text-uno-negro border-uno-olivo`}>Aprobado</span>;
       case "rejected":
-        return (
-          <span
-            className={`${base} bg-uno-terracota/15 text-uno-marron border-uno-terracota/60`}
-          >
-            No Aprobado
-          </span>
-        );
+        return <span className={`${base} bg-uno-terracota/15 text-uno-marron border-uno-terracota/60`}>No Aprobado</span>;
       case "rescheduled":
-        return (
-          <span
-            className={`${base} bg-uno-oro/30 text-uno-negro border-uno-oro`}
-          >
-            Reprogramación
-          </span>
-        );
+        return <span className={`${base} bg-uno-oro/30 text-uno-negro border-uno-oro`}>Reprogramación</span>;
       case "cancelled":
-        return (
-          <span
-            className={`${base} bg-uno-beige/50 text-uno-negro border-uno-beige`}
-          >
-            Cancelado
-          </span>
-        );
+        return <span className={`${base} bg-uno-beige/50 text-uno-negro border-uno-beige`}>Cancelado</span>;
       default:
-        return (
-          <span
-            className={`${base} bg-uno-mostaza/30 text-uno-negro border-uno-mostaza`}
-          >
-            Pendiente
-          </span>
-        );
+        return <span className={`${base} bg-uno-mostaza/30 text-uno-negro border-uno-mostaza`}>Pendiente</span>;
     }
   };
 
-  const actionBtn =
-    "cursor-pointer h-9 md:h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all";
+  const actionBtn = "cursor-pointer h-9 md:h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all";
 
   const renderActions = (activity: BackendActivity) => {
     const userCanEditThis = canEditActivity(activity);
-    const direction = approvalDirections[activity.activityId] ?? "planning";
+    
+    // Si es superusuario usa su selección local; si es directivo usa su departamento asignado
+    const activeDirection: ActivityApprovalDirection = isSuperUser
+      ? (superUserDirections[activity.activityId] ?? "planning")
+      : (assignedDirection ?? "planning");
+
     const newDates = rescheduleDates[activity.activityId] ?? {
       startDate: activity.startDate?.slice(0, 10) ?? "",
       endDate: activity.endDate?.slice(0, 10) ?? "",
     };
+
     const approvalLabel = (status: BackendActivity["approvals"]["planning"]) =>
       ({
         pending: "Pendiente",
@@ -464,7 +371,7 @@ export default function ActivitiesPage() {
         rejected: "No aprobado",
         cancelled: "Cancelado",
         rescheduled: "Reprogramación",
-      })[status];
+      }[status]);
 
     return (
       <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
@@ -485,9 +392,18 @@ export default function ActivitiesPage() {
 
         {canApprove && (
           <div className="basis-full space-y-2 rounded-xl border border-border bg-secondary/30 p-3">
-            <p className="text-xs font-bold text-foreground">
-              Aprobaciones por dirección
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-foreground">
+                Dictamen Colegiado
+              </p>
+              {!isSuperUser && (
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Área: {activeDirection === "planning" ? "Planeación" : activeDirection === "academic" ? "Académica" : "Administración"}
+                </span>
+              )}
+            </div>
+
+            {/* Chips de estado por dirección */}
             <div className="flex flex-wrap gap-2 text-[11px]">
               {(
                 [
@@ -498,37 +414,43 @@ export default function ActivitiesPage() {
               ).map(([key, label]) => (
                 <span
                   key={key}
-                  className="rounded-full border border-border bg-background px-2 py-1"
+                  className="rounded-full border border-border bg-background px-2.5 py-1 font-medium"
                 >
                   {label}:{" "}
-                  {approvalLabel(activity.approvals?.[key] ?? "pending")}
+                  <strong className="text-foreground">
+                    {approvalLabel(activity.approvals?.[key] ?? "pending")}
+                  </strong>
                 </span>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <label
-                className="sr-only"
-                htmlFor={`approval-${activity.activityId}`}
-              >
-                Dirección que emite el dictamen
-              </label>
-              <select
-                id={`approval-${activity.activityId}`}
-                value={direction}
-                onChange={(event) =>
-                  setApprovalDirections((current) => ({
-                    ...current,
-                    [activity.activityId]: event.target
-                      .value as ActivityApprovalDirection,
-                  }))
-                }
-                disabled={savingApprovalFor === activity.activityId}
-                className="h-9 rounded-lg border border-input bg-background px-2 text-xs"
-              >
-                <option value="planning">Planeación</option>
-                <option value="academic">Académica</option>
-                <option value="administrative">Administración</option>
-              </select>
+
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {/* SELECTOR MANUAL: Exclusivo para Superusuarios */}
+              {isSuperUser && (
+                <>
+                  <label className="sr-only" htmlFor={`approval-${activity.activityId}`}>
+                    Dirección que emite el dictamen
+                  </label>
+                  <select
+                    id={`approval-${activity.activityId}`}
+                    value={activeDirection}
+                    onChange={(event) =>
+                      setSuperUserDirections((current) => ({
+                        ...current,
+                        [activity.activityId]: event.target.value as ActivityApprovalDirection,
+                      }))
+                    }
+                    disabled={savingApprovalFor === activity.activityId}
+                    className="h-8 rounded-lg border border-input bg-background px-2 text-xs font-medium"
+                  >
+                    <option value="planning">Dir. Planeación</option>
+                    <option value="academic">Dir. Académica</option>
+                    <option value="administrative">Dir. Administración</option>
+                  </select>
+                </>
+              )}
+
+              {/* Botones de acción institucional */}
               {(
                 [
                   ["approved", "Aprobar"],
@@ -542,31 +464,34 @@ export default function ActivitiesPage() {
                   variant="outline"
                   disabled={
                     savingApprovalFor === activity.activityId ||
-                    activity.approvals?.[direction] === status
+                    activity.approvals?.[activeDirection] === status
                   }
                   onClick={() =>
                     void handleUpdateStatus(
                       activity.activityId,
-                      direction,
-                      status,
+                      activeDirection,
+                      status as ActivityApprovalDecision,
                     )
                   }
-                  className={`${actionBtn} ${status === "approved" ? "text-uno-olivo border-uno-olivo/50 hover:bg-uno-verde" : status === "rejected" ? "text-uno-terracota border-uno-terracota/50 hover:bg-uno-terracota/10" : "text-muted-foreground border-border hover:bg-secondary"}`}
+                  className={`${actionBtn} ${
+                    status === "approved"
+                      ? "text-uno-olivo border-uno-olivo/50 hover:bg-uno-verde"
+                      : status === "rejected"
+                      ? "text-uno-terracota border-uno-terracota/50 hover:bg-uno-terracota/10"
+                      : "text-muted-foreground border-border hover:bg-secondary"
+                  }`}
                 >
-                  {savingApprovalFor === activity.activityId
-                    ? "Guardando…"
-                    : label}
+                  {savingApprovalFor === activity.activityId ? "Guardando…" : label}
                 </Button>
               ))}
+
               <Button
                 size="sm"
                 variant="outline"
                 disabled={savingApprovalFor === activity.activityId}
                 onClick={() =>
                   setReschedulingActivity((current) =>
-                    current === activity.activityId
-                      ? null
-                      : activity.activityId,
+                    current === activity.activityId ? null : activity.activityId,
                   )
                 }
                 className={`${actionBtn} text-uno-marron border-uno-oro hover:bg-uno-oro/20`}
@@ -574,6 +499,8 @@ export default function ActivitiesPage() {
                 Reprogramar
               </Button>
             </div>
+
+            {/* Panel para reprogramación */}
             {reschedulingActivity === activity.activityId && (
               <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
                 <label className="space-y-1 text-xs font-medium">
@@ -590,7 +517,7 @@ export default function ActivitiesPage() {
                         },
                       }))
                     }
-                    className="block h-9 rounded-lg border border-input bg-background px-2"
+                    className="block h-8 rounded-lg border border-input bg-background px-2 text-xs"
                     required
                   />
                 </label>
@@ -609,7 +536,7 @@ export default function ActivitiesPage() {
                         },
                       }))
                     }
-                    className="block h-9 rounded-lg border border-input bg-background px-2"
+                    className="block h-8 rounded-lg border border-input bg-background px-2 text-xs"
                     required
                   />
                 </label>
@@ -624,7 +551,7 @@ export default function ActivitiesPage() {
                   onClick={() =>
                     void handleUpdateStatus(
                       activity.activityId,
-                      direction,
+                      activeDirection,
                       "rescheduled",
                       newDates,
                     )
@@ -676,7 +603,6 @@ export default function ActivitiesPage() {
         )}
 
         <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
-          {/* Encabezado */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-4 md:p-6 rounded-2xl border border-border shadow-sm">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -691,26 +617,20 @@ export default function ActivitiesPage() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                Panel institucional configurado según tu rol activo ({roleScope}
-                ).
+                Panel institucional configurado según tu rol activo ({roleScope}).
               </p>
             </div>
 
             {canCreate && (
-              <ActivityModal
-                userRole={roleScope}
-                canReserve={
-                  isSuperUser ||
-                  permissions.some((permission) =>
-                    permission.startsWith("reservation:"),
-                  )
-                }
-                onSave={handleSaveActivity}
-              />
+              <Link href="/activities/new">
+                <Button className="cursor-pointer min-h-[44px] w-full sm:w-auto bg-[#5b141b] hover:bg-[#481015] text-white font-medium shadow-sm active:scale-95 transition-all rounded-xl px-5 flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  + Nueva Actividad
+                </Button>
+              </Link>
             )}
           </div>
 
-          {/* Pestañas: Mis Actividades vs Todas las Actividades */}
           {canShowAllTabs && (
             <div className="flex items-center gap-2 bg-card p-2 rounded-2xl border border-border shadow-sm">
               <Button
@@ -741,7 +661,6 @@ export default function ActivitiesPage() {
             </div>
           )}
 
-          {/* Filtros de estado */}
           <div className="flex items-center gap-2 bg-card p-3 md:p-4 rounded-2xl border border-border shadow-sm overflow-x-auto">
             <span className="shrink-0 text-xs font-bold text-muted-foreground uppercase tracking-wider mr-2">
               Filtrar estado:
@@ -770,7 +689,6 @@ export default function ActivitiesPage() {
             ))}
           </div>
 
-          {/* Tabla de Actividades */}
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
             {loading ? (
               <div className="flex flex-col items-center justify-center p-12 gap-3 text-muted-foreground">
@@ -779,32 +697,20 @@ export default function ActivitiesPage() {
               </div>
             ) : (
               <>
-                {/* Escritorio y tablet horizontal */}
                 <div className="hidden md:block">
                   <Table>
                     <TableHeader className="bg-secondary/70">
                       <TableRow>
-                        <TableHead className="font-bold text-foreground">
-                          Título
-                        </TableHead>
-                        <TableHead className="font-bold text-foreground">
-                          Creado por
-                        </TableHead>
-                        <TableHead className="font-bold text-foreground">
-                          Estatus
-                        </TableHead>
-                        <TableHead className="text-right font-bold text-foreground">
-                          Acciones
-                        </TableHead>
+                        <TableHead className="font-bold text-foreground">Título</TableHead>
+                        <TableHead className="font-bold text-foreground">Creado por</TableHead>
+                        <TableHead className="font-bold text-foreground">Estatus</TableHead>
+                        <TableHead className="text-right font-bold text-foreground">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredActivities.length === 0 ? (
                         <TableRow>
-                          <TableCell
-                            colSpan={4}
-                            className="text-center py-8 text-muted-foreground text-sm"
-                          >
+                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
                             No hay actividades registradas para mostrar.
                           </TableCell>
                         </TableRow>
@@ -818,16 +724,10 @@ export default function ActivitiesPage() {
                               {activity.title || "Sin título"}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              {activity.creator?.username ||
-                                activity.creator?.userId ||
-                                "Desconocido"}
+                              {activity.creator?.username || activity.creator?.userId || "Desconocido"}
                             </TableCell>
-                            <TableCell>
-                              {getStatusBadge(activity.status)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {renderActions(activity)}
-                            </TableCell>
+                            <TableCell>{getStatusBadge(activity.status)}</TableCell>
+                            <TableCell className="text-right">{renderActions(activity)}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -835,7 +735,6 @@ export default function ActivitiesPage() {
                   </Table>
                 </div>
 
-                {/* Móvil */}
                 <div className="md:hidden divide-y divide-border">
                   {filteredActivities.length === 0 ? (
                     <p className="text-center py-8 px-4 text-muted-foreground text-sm">
@@ -848,16 +747,12 @@ export default function ActivitiesPage() {
                           <h3 className="min-w-0 font-semibold text-foreground break-words">
                             {activity.title || "Sin título"}
                           </h3>
-                          <div className="shrink-0">
-                            {getStatusBadge(activity.status)}
-                          </div>
+                          <div className="shrink-0">{getStatusBadge(activity.status)}</div>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Creado por:{" "}
                           <span className="text-foreground">
-                            {activity.creator?.username ||
-                              activity.creator?.userId ||
-                              "Desconocido"}
+                            {activity.creator?.username || activity.creator?.userId || "Desconocido"}
                           </span>
                         </p>
                         {renderActions(activity)}
@@ -869,15 +764,12 @@ export default function ActivitiesPage() {
             )}
           </div>
 
-          {/* Modal para edición */}
           {editingActivity && (
             <ActivityModal
               userRole={roleScope}
               canReserve={
                 isSuperUser ||
-                permissions.some((permission) =>
-                  permission.startsWith("reservation:"),
-                )
+                permissions.some((p) => p.startsWith("reservation:"))
               }
               initialActivity={editingActivity}
               isOpen={isEditModalOpen}

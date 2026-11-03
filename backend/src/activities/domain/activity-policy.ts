@@ -39,16 +39,25 @@ export class ActivityPolicy {
     return this.manages || this.has(P.updateAll);
   }
 
+  // Permiso funcional base: el rol (sea coordinador, directivo o titular) puede dictaminar
+  get hasGeneralApprovalPermission(): boolean {
+    return this.manages || this.has(P.approveAll) || this.has('activity:approve_all');
+  }
+
+  // Verificación por área institucional
   get canApprovePlanning(): boolean {
-    return this.manages || this.has('activity:approve_planning') || this.has(P.approveAll);
+    if (this.manages) return true;
+    return this.hasGeneralApprovalPermission && this.has('activity:approve_planning');
   }
 
   get canApproveAcademic(): boolean {
-    return this.manages || this.has('activity:approve_academic') || this.has(P.approveAll);
+    if (this.manages) return true;
+    return this.hasGeneralApprovalPermission && this.has('activity:approve_academic');
   }
 
   get canApproveAdministrative(): boolean {
-    return this.manages || this.has('activity:approve_administrative') || this.has(P.approveAll);
+    if (this.manages) return true;
+    return this.hasGeneralApprovalPermission && this.has('activity:approve_administrative');
   }
 
   get canApprove(): boolean {
@@ -57,6 +66,20 @@ export class ActivityPolicy {
       this.canApproveAcademic ||
       this.canApproveAdministrative
     );
+  }
+
+  // Opciones exactas que el Backend devuelve en capabilities
+  get approvalOptions(): ActivityApprovalDirection[] {
+    if (this.manages) {
+      return ['planning', 'academic', 'administrative'];
+    }
+
+    const options: ActivityApprovalDirection[] = [];
+    if (this.canApprovePlanning) options.push('planning');
+    if (this.canApproveAcademic) options.push('academic');
+    if (this.canApproveAdministrative) options.push('administrative');
+
+    return options;
   }
 
   canApproveDirection(direction: ActivityApprovalDirection): boolean {

@@ -47,7 +47,7 @@ export class ActivitiesUseCase {
       canUpdateOwn: policy.canUpdateAll || policy.has(P.updateOwn),
       canApprove: policy.canApprove,
       canDelete: policy.manages,
-      approvalOptions: policy.canApprove ? ACTIVITY_APPROVAL_OPTIONS : [],
+      approvalOptions: policy.approvalOptions, // <-- Ahora devuelve sus opciones reales calculadas
     };
   }
   async creators(userId: string, query: ActivityList) {

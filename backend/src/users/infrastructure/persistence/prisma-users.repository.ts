@@ -51,6 +51,7 @@ export class PrismaUsersRepository implements UsersRepository {
           email: data.email,
           password_hash: data.passwordHash,
           status_id: activeStatus.status_id,
+          department_id: data.departmentId ?? null,
         },
 
         select: {
@@ -62,7 +63,7 @@ export class PrismaUsersRepository implements UsersRepository {
           department_id: true,
 
           user_roles: { select: { roles: { select: { role_id: true, name: true } } } },
-        user_statuses: {
+          user_statuses: {
             select: {
               name: true,
             },
@@ -143,13 +144,14 @@ export class PrismaUsersRepository implements UsersRepository {
           username: user.username,
           email: user.email,
           status: user.user_statuses.name,
-      roles: user.user_roles.map(({ roles }) => ({ roleId: roles.role_id, name: roles.name })),
+          roles: user.user_roles.map(({ roles }) => ({ roleId: roles.role_id, name: roles.name })),
           typeId: user.type_id,
           departmentId: user.department_id,
           createdAt: user.created_at,
         }
       : null;
   }
+
   async update(id: string, data: Partial<CreateUserData>): Promise<User> {
     const user = await prismaWrite(() =>
       this.prisma.users.update({
@@ -157,7 +159,8 @@ export class PrismaUsersRepository implements UsersRepository {
         data: {
           username: data.username,
           email: data.email,
-          password_hash: data.passwordHash,
+          ...(data.passwordHash ? { password_hash: data.passwordHash } : {}),
+          ...(data.departmentId !== undefined ? { department_id: data.departmentId } : {}),
           updated_at: new Date(),
         },
         select: {
@@ -169,7 +172,7 @@ export class PrismaUsersRepository implements UsersRepository {
           department_id: true,
 
           user_roles: { select: { roles: { select: { role_id: true, name: true } } } },
-        user_statuses: {
+          user_statuses: {
             select: {
               name: true,
             },
@@ -188,6 +191,7 @@ export class PrismaUsersRepository implements UsersRepository {
       createdAt: user.created_at,
     };
   }
+
   async delete(id: string): Promise<void> {
     await prismaWrite(() =>
       this.prisma.$transaction(async (tx) => {

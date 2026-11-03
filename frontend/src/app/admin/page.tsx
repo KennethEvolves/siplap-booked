@@ -1,4 +1,3 @@
-// src/app/admin/page.tsx
 'use client';
 
 import { Suspense } from 'react';
@@ -11,6 +10,7 @@ import { Sidebar } from '@/components/Sidebar';
 import UsersTab from '@/components/UsersTab';
 import RolesTab from '@/components/RolesTab';
 import PermissionsTab from '@/components/PermissionsTab';
+import { DepartmentsManager } from "@/components/DepartmentsManager";
 
 export default function AdminPage() {
   return (
@@ -23,9 +23,8 @@ export default function AdminPage() {
 function AdminPanel() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tabs = ['users', 'roles', 'permissions'] as const;
+  const tabs = ['users', 'roles', 'permissions', 'departments'] as const;
   const activeTab = tabs.find((tab) => tab === searchParams.get('tab')) ?? 'users';
-
   const selectTab = (tab: (typeof tabs)[number]) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', tab);
@@ -41,10 +40,10 @@ function AdminPanel() {
     <div className="flex min-h-screen bg-secondary/40 text-foreground">
       <SessionSync />
 
-      {/* Sidebar colapsable (en móvil es un menú desplegable) */}
+      {/* Sidebar colapsable */}
       <Sidebar />
 
-      {/* pt-16 deja espacio al botón hamburguesa en móvil y tablet */}
+      {/* Contenido principal */}
       <main className="flex-1 min-w-0 p-4 pt-16 md:p-6 md:pt-16 lg:p-8 lg:pt-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
 
@@ -58,7 +57,7 @@ function AdminPanel() {
                 Panel SUPERUSUARIO
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Gestiona las personas, roles y permisos de tu organización.
+                Gestiona las personas, roles, departamentos y permisos de tu organización.
               </p>
             </div>
 
@@ -72,10 +71,10 @@ function AdminPanel() {
           </div>
 
           {/* Barra de Pestañas (Botones superiores) */}
-          <div className="flex space-x-3 border-b border-slate-200 pb-3 mb-6">
+          <div className="flex space-x-3 border-b border-slate-200 pb-3 mb-6 overflow-x-auto">
             <button
               onClick={() => selectTab('users')}
-              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm shrink-0 ${
                 activeTab === 'users'
                   ? 'bg-blue-600 text-white shadow-blue-500/20'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
@@ -86,7 +85,7 @@ function AdminPanel() {
 
             <button
               onClick={() => selectTab('roles')}
-              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm shrink-0 ${
                 activeTab === 'roles'
                   ? 'bg-blue-600 text-white shadow-blue-500/20'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
@@ -97,7 +96,7 @@ function AdminPanel() {
 
             <button
               onClick={() => selectTab('permissions')}
-              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm shrink-0 ${
                 activeTab === 'permissions'
                   ? 'bg-blue-600 text-white shadow-blue-500/20'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
@@ -106,6 +105,16 @@ function AdminPanel() {
               Permisos
             </button>
 
+            <button
+              onClick={() => selectTab('departments')}
+              className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm shrink-0 ${
+                activeTab === 'departments'
+                  ? 'bg-blue-600 text-white shadow-blue-500/20'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+              }`}
+            >
+              Departamentos
+            </button>
           </div>
 
           {/* Contenido de la pestaña activa */}
@@ -113,6 +122,7 @@ function AdminPanel() {
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'roles' && <RolesTab />}
             {activeTab === 'permissions' && <PermissionsTab />}
+            {activeTab === 'departments' && <DepartmentsManager />}
           </div>
 
         </div>

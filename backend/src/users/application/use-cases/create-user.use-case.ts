@@ -23,6 +23,7 @@ export class CreateUserUseCase {
     const email = input.email?.trim().toLowerCase();
     const username = input.username?.trim() || null;
     const password = input.password;
+    const departmentId = input.departmentId || null;
 
     if (!email) {
       throw new InvalidUserDataError(
@@ -56,6 +57,7 @@ export class CreateUserUseCase {
       username,
       email,
       passwordHash,
+      departmentId,
     });
 
     return {

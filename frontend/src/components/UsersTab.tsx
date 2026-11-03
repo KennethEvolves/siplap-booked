@@ -3,15 +3,16 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getDepartments, type Department } from '@/lib/api';
 import { createUserSchema, updateUserSchema, type ZodType } from '@shared/contracts';
-import { UserPlus, ShieldCheck, Search } from 'lucide-react';
+import { UserPlus, ShieldCheck, Search, Building2 } from 'lucide-react';
 
 interface UserItem {
   userId: string;
   username: string | null;
   email: string;
   status: string | null;
+  departmentId?: string | null;
   roles: RoleItem[];
 }
 
@@ -31,16 +32,23 @@ const successBox =
   'p-3 rounded-xl text-xs font-medium border border-uno-olivo/40 bg-uno-verde text-uno-negro';
 
 async function loadUserData() {
-  const [users, roles] = await Promise.all([
+  const [usersRes, rolesRes, deptsRes] = await Promise.all([
     apiFetch<{ users: UserItem[] } | UserItem[]>('/users'),
     apiFetch<{ roles: RoleItem[] } | RoleItem[]>('/roles'),
+    getDepartments().catch(() => ({ departments: [] })),
   ]);
-  return { users: Array.isArray(users) ? users : users.users, roles: Array.isArray(roles) ? roles : roles.roles };
+
+  const users = Array.isArray(usersRes) ? usersRes : usersRes.users;
+  const roles = Array.isArray(rolesRes) ? rolesRes : rolesRes.roles;
+  const departments = deptsRes.departments || [];
+
+  return { users, roles, departments };
 }
 
 export default function UsersTab() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [busy, setBusy] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +58,7 @@ export default function UsersTab() {
   const [username, setUsername] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userPassword, setUserPassword] = useState('');
+  const [departmentId, setDepartmentId] = useState<string>('');
 
   // Estados para la tarjeta de "Asignar rol a usuario"
   const [selectedUser, setSelectedUser] = useState('');
@@ -74,8 +83,9 @@ export default function UsersTab() {
       const data = await loadUserData();
       setUsers(data.users);
       setRoles(data.roles);
+      setDepartments(data.departments);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los usuarios');
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar los datos de usuarios');
     } finally {
       setLoadingUsers(false);
     }
@@ -83,12 +93,23 @@ export default function UsersTab() {
 
   useEffect(() => {
     let active = true;
-    loadUserData().then(data => {
-      if (active) { setUsers(data.users); setRoles(data.roles); }
-    }).catch((error: unknown) => {
-      if (active) setError(error instanceof Error ? error.message : 'No se pudieron cargar los usuarios');
-    }).finally(() => { if (active) setLoadingUsers(false); });
-    return () => { active = false; };
+    loadUserData()
+      .then(data => {
+        if (active) {
+          setUsers(data.users);
+          setRoles(data.roles);
+          setDepartments(data.departments);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) setError(error instanceof Error ? error.message : 'No se pudieron cargar los datos');
+      })
+      .finally(() => {
+        if (active) setLoadingUsers(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const cancelEdit = () => {
@@ -96,6 +117,7 @@ export default function UsersTab() {
     setUsername('');
     setUserEmail('');
     setUserPassword('');
+    setDepartmentId('');
   };
 
   const startEdit = (user: UserItem) => {
@@ -105,7 +127,8 @@ export default function UsersTab() {
     setUsername(user.username || '');
     setUserEmail(user.email);
     setUserPassword('');
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // en móvil el formulario queda arriba
+    setDepartmentId(user.departmentId || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCreateOrUpdateUser = async (e: FormEvent) => {
@@ -115,13 +138,19 @@ export default function UsersTab() {
     setBusy(true);
 
     try {
+      const payload: Record<string, unknown> = {
+        username,
+        email: userEmail,
+        departmentId: departmentId.trim() ? departmentId : null,
+      };
+
+      if (!editingUser || userPassword) {
+        payload.password = userPassword;
+      }
+
       const bodyData = validatedBody(
         editingUser ? updateUserSchema : createUserSchema,
-        {
-          username,
-          email: userEmail,
-          ...(!editingUser || userPassword ? { password: userPassword } : {}),
-        }
+        payload
       );
 
       await apiFetch(editingUser ? `/users/${editingUser}` : '/users', {
@@ -131,7 +160,7 @@ export default function UsersTab() {
 
       setSuccess(editingUser ? '¡Usuario actualizado con éxito!' : '¡Usuario creado con éxito!');
       cancelEdit();
-      fetchData();
+      await fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al guardar el usuario');
     } finally {
@@ -144,7 +173,7 @@ export default function UsersTab() {
       try {
         await apiFetch(`/users/${id}`, { method: 'DELETE' });
         if (editingUser === id) cancelEdit();
-        fetchData();
+        await fetchData();
       } catch (err: unknown) {
         alert(err instanceof Error ? err.message : 'No se pudo eliminar');
       }
@@ -187,13 +216,21 @@ export default function UsersTab() {
       await fetchData();
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'No se pudo quitar el rol');
-    } finally { setRemovingRole(null); }
+    } finally {
+      setRemovingRole(null);
+    }
   };
 
   const filteredUsers = users.filter(user =>
     user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getDepartmentName = (deptId?: string | null) => {
+    if (!deptId) return null;
+    const dept = departments.find(d => d.department_id === deptId);
+    return dept ? dept.name : null;
+  };
 
   // Piezas que se repiten en la tabla (escritorio) y en las tarjetas (móvil)
   const renderStatus = (user: UserItem) => (
@@ -202,6 +239,19 @@ export default function UsersTab() {
       {user.status || 'Activo'}
     </span>
   );
+
+  const renderDepartment = (user: UserItem) => {
+    const deptName = getDepartmentName(user.departmentId);
+    if (!deptName) {
+      return <span className="text-xs text-muted-foreground italic">Sin departamento</span>;
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 text-xs font-semibold border border-blue-200 dark:border-blue-800">
+        <Building2 className="h-3 w-3" />
+        {deptName}
+      </span>
+    );
+  };
 
   const renderRoles = (user: UserItem) => (
     <span className="inline-block px-2.5 py-1 rounded-md bg-secondary text-foreground text-xs font-medium border border-border">
@@ -245,13 +295,13 @@ export default function UsersTab() {
               {editingUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {editingUser ? 'Modifica los datos del usuario seleccionado.' : 'Crea las credenciales iniciales para una nueva persona.'}
+              {editingUser ? 'Modifica los datos del usuario seleccionado y su dirección asignada.' : 'Crea las credenciales y asigna el departamento institucional correspondiente.'}
             </p>
           </div>
         </div>
 
         <form onSubmit={handleCreateOrUpdateUser} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className={labelClass}>Nombre de usuario</label>
               <input
@@ -286,6 +336,22 @@ export default function UsersTab() {
                 placeholder={editingUser ? 'Dejar vacía para conservar' : 'Mínimo 8 caracteres'}
                 className={fieldClass}
               />
+            </div>
+
+            <div>
+              <label className={labelClass}>Departamento / Dirección</label>
+              <select
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">Sin departamento institucional</option>
+                {departments.map((dept) => (
+                  <option key={dept.department_id} value={dept.department_id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -358,6 +424,7 @@ export default function UsersTab() {
               <tr className="border-b border-border text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-secondary/70">
                 <th className="py-3.5 px-6">Usuario</th>
                 <th className="py-3.5 px-6">Correo</th>
+                <th className="py-3.5 px-6">Departamento</th>
                 <th className="py-3.5 px-6">Estado</th>
                 <th className="py-3.5 px-6">Roles</th>
                 <th className="py-3.5 px-6 text-right">Acciones</th>
@@ -366,17 +433,18 @@ export default function UsersTab() {
             <tbody className="divide-y divide-border text-sm">
               {loadingUsers ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-muted-foreground">Cargando usuarios...</td>
+                  <td colSpan={6} className="py-8 text-center text-muted-foreground">Cargando usuarios...</td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-muted-foreground">No hay usuarios registrados.</td>
+                  <td colSpan={6} className="py-8 text-center text-muted-foreground">No hay usuarios registrados.</td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.userId} className="hover:bg-secondary/50 transition-colors">
                     <td className="py-4 px-6 font-semibold text-foreground">{user.username || 'Sin nombre'}</td>
                     <td className="py-4 px-6 text-muted-foreground text-xs">{user.email}</td>
+                    <td className="py-4 px-6">{renderDepartment(user)}</td>
                     <td className="py-4 px-6">{renderStatus(user)}</td>
                     <td className="py-4 px-6">{renderRoles(user)}</td>
                     <td className="py-4 px-6 text-right">{renderRowActions(user)}</td>
@@ -403,6 +471,7 @@ export default function UsersTab() {
                   </div>
                   <div className="shrink-0">{renderStatus(user)}</div>
                 </div>
+                <div>{renderDepartment(user)}</div>
                 <div>{renderRoles(user)}</div>
                 {renderRowActions(user)}
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
@@ -13,10 +13,17 @@ import {
   MapPin, 
   FileText, 
   Award, 
-  Building2,
-  ExternalLink
+  Building2, 
+  ExternalLink,
+  Loader2,
+  UserCheck
 } from 'lucide-react';
-import { ExternalLocationInput } from '@/lib/api';
+import { 
+  createActivity, 
+  setActivityPersonnel,
+  apiFetch, 
+  ExternalLocationInput 
+} from '@/lib/api';
 
 interface RecursoFinancieroItem {
   id: string;
@@ -29,12 +36,60 @@ interface EspacioSeleccionado {
   spaceId: string;
 }
 
+interface AxisItem {
+  axisId: string;
+  name: string;
+  description?: string | null;
+}
+
+interface ObjectiveItem {
+  objectiveId: string;
+  name: string;
+  description?: string | null;
+  axisId: string;
+}
+
+interface UserOption {
+  userId?: string;
+  user_id?: string;
+  username: string;
+  email?: string;
+}
+
+interface UserCapabilities {
+  canCreate: boolean;
+  canAssignCreator: boolean;
+  canViewAll: boolean;
+  canViewOwn: boolean;
+  canViewAssigned: boolean;
+  canUpdateAll: boolean;
+  canUpdateOwn: boolean;
+  canApprove: boolean;
+  canDelete: boolean;
+  approvalOptions: string[];
+}
+
 export default function NewActivityPage() {
   const router = useRouter();
 
+  // Estados de datos remotos y sesión
+  const [axesList, setAxesList] = useState<AxisItem[]>([]);
+  const [objectivesList, setObjectivesList] = useState<ObjectiveItem[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [backendCapabilities, setBackendCapabilities] = useState<UserCapabilities | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+
+  const [loadingCatalogs, setLoadingCatalogs] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Selector institucional de creador (exclusivo para superusuario / gestionar actividades)
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string>('');
+
   // 1. Alcance de la actividad
-  const [eje, setEje] = useState('');
-  const [objetivo, setObjetivo] = useState('');
+  const [selectedAxisId, setSelectedAxisId] = useState('');
+  const [selectedObjectiveId, setSelectedObjectiveId] = useState('');
   const [noActividad, setNoActividad] = useState('');
 
   // 2. Datos generales
@@ -45,7 +100,7 @@ export default function NewActivityPage() {
   const [horaInicio, setHoraInicio] = useState('');
   const [horaFin, setHoraFin] = useState('');
   const [tipoUbicacion, setTipoUbicacion] = useState('');
-  const [colaboradores, setColaboradores] = useState('');
+  const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
 
   // Subflujo 1: Espacios universitarios
   const [espaciosSeleccionados, setEspaciosSeleccionados] = useState<EspacioSeleccionado[]>([
@@ -53,18 +108,95 @@ export default function NewActivityPage() {
   ]);
 
   const catalogoEspacios = [
-    { id: 'esp-1', nombre: 'Auditorio Principal' },
-    { id: 'esp-2', nombre: 'Sala de Usos Múltiples (SUM)' },
-    { id: 'esp-3', nombre: 'Laboratorio de Cómputo 1' },
-    { id: 'esp-4', nombre: 'Laboratorio de Cómputo 2' },
-    { id: 'esp-5', nombre: 'Laboratorio de Gastronomía' },
-    { id: 'esp-6', nombre: 'Cancha de Usos Múltiples' },
-    { id: 'esp-7', nombre: 'Aula Magna' },
+    { id: 'eee7e59b-7fed-4384-a39a-722e37ab2670', nombre: 'Explanada Principal' },
+    { id: 'esp-auditorio', nombre: 'Auditorio Principal' },
+    { id: 'esp-sum', nombre: 'Sala de Usos Múltiples (SUM)' },
+    { id: 'esp-lab1', nombre: 'Laboratorio de Cómputo 1' },
+    { id: 'esp-lab-gastro', nombre: 'Laboratorio de Gastronomía' },
   ];
 
+  // Matriz de autorización
+  const canAssignCreator = useMemo(() => {
+    return (
+      permissions.includes('manage:all') ||
+      permissions.includes('activity:manage') ||
+      Boolean(backendCapabilities?.canAssignCreator)
+    );
+  }, [permissions, backendCapabilities]);
+
+  // Carga inicial sincronizada idéntica a StrategicPlanningPage
+  useEffect(() => {
+    async function loadInitialData() {
+      try {
+        setLoadingCatalogs(true);
+
+        try {
+          const { getSession } = await import('next-auth/react');
+          const session = await getSession();
+          const userPerms = session?.user?.permissions || [];
+          setPermissions(userPerms);
+          setCurrentUserId(session?.user?.id);
+        } catch (err) {
+          console.error('Error al sincronizar sesión:', err);
+        }
+
+        const [resAxes, resObjectives, resUsers, resCaps] = await Promise.allSettled([
+          apiFetch<any>('/api/axes'),
+          apiFetch<any>('/api/objectives'),
+          apiFetch<any>('/api/activities/creators?page=1&limit=100'),
+          apiFetch<UserCapabilities>('/activities/capabilities').catch(() => null),
+        ]);
+
+        if (resAxes.status === 'fulfilled' && resAxes.value) {
+          const rawAxes = resAxes.value.axes || (Array.isArray(resAxes.value) ? resAxes.value : []);
+          setAxesList(
+            rawAxes.map((a: any) => ({
+              axisId: a.axisId || a.axis_id || a.id,
+              name: a.name || 'Sin nombre',
+              description: a.description || '',
+            }))
+          );
+        }
+
+        if (resObjectives.status === 'fulfilled' && resObjectives.value) {
+          const rawObj = resObjectives.value.objectives || (Array.isArray(resObjectives.value) ? resObjectives.value : []);
+          setObjectivesList(
+            rawObj.map((o: any) => ({
+              objectiveId: o.objectiveId || o.objective_id || o.id,
+              name: o.name || 'Sin nombre',
+              description: o.description || '',
+              axisId: o.axisId || o.axis_id || o.axis?.axis_id || '',
+            }))
+          );
+        }
+
+        if (resUsers.status === 'fulfilled' && resUsers.value) {
+          const rawUsers = resUsers.value.users || (Array.isArray(resUsers.value) ? resUsers.value : []);
+          setAvailableUsers(rawUsers);
+        }
+
+        if (resCaps.status === 'fulfilled' && resCaps.value) {
+          setBackendCapabilities(resCaps.value);
+        }
+      } catch (err) {
+        console.error('Error al sincronizar catálogos institucionales:', err);
+      } finally {
+        setLoadingCatalogs(false);
+      }
+    }
+
+    void loadInitialData();
+  }, []);
+
+  // Filtrado de objetivos dependiente del eje seleccionado
+  const filteredObjectives = useMemo(() => {
+    if (!selectedAxisId) return [];
+    return objectivesList.filter((obj) => obj.axisId === selectedAxisId);
+  }, [objectivesList, selectedAxisId]);
+
   const handleAddEspacio = () => {
-    setEspaciosSeleccionados([
-      ...espaciosSeleccionados,
+    setEspaciosSeleccionados((prev) => [
+      ...prev,
       { id: Date.now().toString(), spaceId: '' }
     ]);
   };
@@ -74,7 +206,7 @@ export default function NewActivityPage() {
       setEspaciosSeleccionados([{ id: Date.now().toString(), spaceId: '' }]);
       return;
     }
-    setEspaciosSeleccionados(espaciosSeleccionados.filter((item) => item.id !== id));
+    setEspaciosSeleccionados((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleUpdateEspacio = (id: string, spaceId: string) => {
@@ -83,7 +215,7 @@ export default function NewActivityPage() {
     );
   };
 
-  // Subflujo 2: Ubicaciones externas (conservando la lógica de tu compañero)
+  // Subflujo 2: Ubicaciones externas
   const [externalLocations, setExternalLocations] = useState<ExternalLocationInput[]>([]);
   const [locationName, setLocationName] = useState('');
   const [locationAddress, setLocationAddress] = useState('');
@@ -104,13 +236,13 @@ export default function NewActivityPage() {
       longitude: lng,
     };
 
-    setExternalLocations([...externalLocations, newLoc]);
+    setExternalLocations((prev) => [...prev, newLoc]);
     setLocationName('');
     setLocationAddress('');
   };
 
   const handleRemoveExternalLocation = (index: number) => {
-    setExternalLocations(externalLocations.filter((_, i) => i !== index));
+    setExternalLocations((prev) => prev.filter((_, i) => i !== index));
   };
 
   // 3. Recursos Financieros
@@ -119,7 +251,7 @@ export default function NewActivityPage() {
   ]);
 
   const handleAddRecurso = () => {
-    setRecursosList([...recursosList, { id: Date.now().toString(), tipo: '', monto: 0 }]);
+    setRecursosList((prev) => [...prev, { id: Date.now().toString(), tipo: '', monto: 0 }]);
   };
 
   const handleRemoveRecurso = (id: string) => {
@@ -127,7 +259,7 @@ export default function NewActivityPage() {
       setRecursosList([{ id: Date.now().toString(), tipo: '', monto: 0 }]);
       return;
     }
-    setRecursosList(recursosList.filter((item) => item.id !== id));
+    setRecursosList((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleUpdateRecurso = (id: string, field: 'tipo' | 'monto', value: string) => {
@@ -151,39 +283,68 @@ export default function NewActivityPage() {
   const [constancias, setConstancias] = useState('');
   const [requiereAutoridades, setRequiereAutoridades] = useState<'si' | 'no'>('no');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleTogglePersonnel = (userId: string) => {
+    setSelectedPersonnelIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
 
-    const espaciosParaEnviar = (tipoUbicacion === 'interno' || tipoUbicacion === 'mixto')
-      ? espaciosSeleccionados.filter((e) => e.spaceId.trim() !== '')
-      : [];
+    if (!selectedObjectiveId) {
+      setErrorMessage('Es necesario seleccionar un Objetivo Estratégico institucional.');
+      return;
+    }
 
-    const ubicacionesParaEnviar = (tipoUbicacion === 'externo' || tipoUbicacion === 'mixto')
-      ? externalLocations
-      : [];
+    if (!fechaInicio || !fechaFin) {
+      setErrorMessage('Las fechas de inicio y término son requeridas.');
+      return;
+    }
 
-    console.log({
-      eje,
-      objetivo,
-      noActividad,
-      nombreActividad,
-      descripcion,
-      fechaInicio,
-      fechaFin,
-      horaInicio,
-      horaFin,
-      tipoUbicacion,
-      espaciosReservados: espaciosParaEnviar,
-      ubicacionesExternas: ubicacionesParaEnviar,
-      colaboradores,
-      recursosFinancieros: recursosList,
-      totalFinanciamiento,
-      observaciones,
-      constancias,
-      requiereAutoridades,
-    });
+    try {
+      setIsSubmitting(true);
 
-    router.push('/activities');
+      const ubicacionesParaEnviar = (tipoUbicacion === 'externo' || tipoUbicacion === 'mixto')
+        ? externalLocations
+        : [];
+
+      const validCreatorId =
+        canAssignCreator && selectedCreatorId.trim().length > 0
+          ? selectedCreatorId.trim()
+          : undefined;
+
+      // 1. Guardar la actividad institucional con su objetivo asociado
+      const result = await createActivity({
+        title: nombreActividad.trim(),
+        description: descripcion.trim() || undefined,
+        startDate: fechaInicio,
+        endDate: fechaFin,
+        objectiveId: selectedObjectiveId,
+        type: 'extraordinary',
+        requiresAuthority: requiereAutoridades === 'si',
+        requiresCertified: constancias.trim().length > 0,
+        generalObservation: observaciones.trim() || undefined,
+        externalLocations: ubicacionesParaEnviar,
+        ...(validCreatorId ? { creatorId: validCreatorId } : {}),
+      });
+
+      const newActivityId = result.activity?.activityId;
+
+      // 2. Asociar colaboradores seleccionados en la tabla relacional
+      if (newActivityId && selectedPersonnelIds.length > 0) {
+        await setActivityPersonnel(newActivityId, selectedPersonnelIds).catch((err) =>
+          console.warn('Advertencia al asociar colaboradores:', err)
+        );
+      }
+
+      router.push('/activities');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar la actividad.';
+      setErrorMessage(msg);
+      setIsSubmitting(false);
+    }
   };
 
   const cardSectionClass = 'bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6';
@@ -221,8 +382,50 @@ export default function NewActivityPage() {
             </div>
           </div>
 
+          {errorMessage && (
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold">
+              {errorMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-8">
             
+            {/* PANEL DE ASIGNACIÓN DE CREADOR (SÓLO SI TIENE PERMISO DE GESTIONAR ACTIVIDADES) */}
+            {canAssignCreator && (
+              <section className="bg-amber-50/60 rounded-2xl border border-amber-200 p-6 shadow-sm space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-amber-700" />
+                  <h2 className="text-sm font-bold text-amber-900 uppercase tracking-wider">
+                    Asignación de Creador (Control Administrativo)
+                  </h2>
+                </div>
+                <p className="text-xs text-amber-800/90">
+                  Cuentas con permiso global para gestionar actividades. Puedes registrar esta actividad a nombre de otro usuario o dejarlo por defecto a tu nombre.
+                </p>
+                <div className="max-w-md pt-1">
+                  <label className="block text-[11px] font-bold text-amber-900 uppercase mb-1">
+                    Usuario Creador / Titular del Evento
+                  </label>
+                  <select
+                    value={selectedCreatorId}
+                    onChange={(e) => setSelectedCreatorId(e.target.value)}
+                    className={`${inputClass} bg-white border-amber-200 cursor-pointer`}
+                  >
+                    <option value="">- Asignar a mi cuenta actual (por defecto) -</option>
+                    {availableUsers.map((u) => {
+                      const uid = u.userId || u.user_id || '';
+                      const isCurrent = uid === currentUserId;
+                      return (
+                        <option key={uid} value={uid}>
+                          {u.username} {u.email ? `(${u.email})` : ''} {isCurrent ? '— [Tu cuenta]' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </section>
+            )}
+
             {/* 1. ALCANCE DE LA ACTIVIDAD */}
             <section className={cardSectionClass}>
               <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
@@ -236,34 +439,52 @@ export default function NewActivityPage() {
                 <div className="md:col-span-6">
                   <label className={labelClass}>Eje Institucional *</label>
                   <select
-                    value={eje}
-                    onChange={(e) => setEje(e.target.value)}
+                    value={selectedAxisId}
+                    onChange={(e) => {
+                      setSelectedAxisId(e.target.value);
+                      setSelectedObjectiveId('');
+                    }}
                     className={`${inputClass} cursor-pointer`}
                     required
+                    disabled={loadingCatalogs}
                   >
-                    <option value="">- Seleccione el eje -</option>
-                    <option value="eje1">Eje 1: Formación Integral y Calidad Académica</option>
-                    <option value="eje2">Eje 2: Vinculación e Impacto Comunitario</option>
-                    <option value="eje3">Eje 3: Gestión y Gobernanza</option>
+                    <option value="">
+                      {loadingCatalogs ? 'Cargando ejes...' : '- Seleccione el eje rector -'}
+                    </option>
+                    {axesList.map((item) => (
+                      <option key={item.axisId} value={item.axisId}>
+                        {item.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="md:col-span-6">
                   <label className={labelClass}>Objetivo Estratégico *</label>
                   <select
-                    value={objetivo}
-                    onChange={(e) => setObjetivo(e.target.value)}
+                    value={selectedObjectiveId}
+                    onChange={(e) => setSelectedObjectiveId(e.target.value)}
                     className={`${inputClass} cursor-pointer`}
                     required
+                    disabled={loadingCatalogs || !selectedAxisId}
                   >
-                    <option value="">- Seleccione el objetivo -</option>
-                    <option value="obj1">Objetivo 1: Fortalecimiento y Desarrollo de Proyectos</option>
-                    <option value="obj2">Objetivo 2: Actualización y Vinculación</option>
+                    <option value="">
+                      {!selectedAxisId
+                        ? '- Primero seleccione un eje -'
+                        : filteredObjectives.length === 0
+                        ? '- No hay objetivos para este eje -'
+                        : '- Seleccione el objetivo -'}
+                    </option>
+                    {filteredObjectives.map((obj) => (
+                      <option key={obj.objectiveId} value={obj.objectiveId}>
+                        {obj.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="md:col-span-4">
-                  <label className={labelClass}>No. de Actividad</label>
+                  <label className={labelClass}>No. de Actividad (Referencia)</label>
                   <input
                     type="text"
                     value={noActividad}
@@ -368,17 +589,35 @@ export default function NewActivityPage() {
 
                   <div>
                     <label className={labelClass}>Colaboradores Involucrados</label>
-                    <input
-                      type="text"
-                      value={colaboradores}
-                      onChange={(e) => setColaboradores(e.target.value)}
-                      placeholder="Ej. Docentes, laboratoristas, comité técnico"
-                      className={inputClass}
-                    />
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl max-h-36 overflow-y-auto space-y-1.5">
+                      {availableUsers.length === 0 ? (
+                        <p className="text-xs text-slate-500">No hay otros colaboradores disponibles</p>
+                      ) : (
+                        availableUsers.map((u) => {
+                          const uid = u.userId || u.user_id || '';
+                          const isSelected = selectedPersonnelIds.includes(uid);
+                          return (
+                            <label
+                              key={uid}
+                              className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:bg-slate-100/70 p-1 rounded-md"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleTogglePersonnel(uid)}
+                                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="font-semibold text-slate-900">{u.username}</span>
+                              {u.email && <span className="text-[11px] text-slate-500">({u.email})</span>}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* SUBFLUJO 1: PANEL DE ESPACIOS DE LA UNIVERSIDAD */}
+                {/* SUBFLUJO 1: ESPACIOS DE LA UNIVERSIDAD */}
                 {(tipoUbicacion === 'interno' || tipoUbicacion === 'mixto') && (
                   <div className="mt-2 p-5 rounded-xl border border-blue-100 bg-blue-50/40 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -388,7 +627,7 @@ export default function NewActivityPage() {
                           Espacios Universitarios a Reservar *
                         </h3>
                         <p className="text-xs text-blue-600/90 mt-0.5">
-                          Selecciona uno o varios espacios. Cada uno generará una reservación asociada con estatus pendiente.
+                          Selecciona uno o varios espacios para generar sus reservaciones en estado pendiente.
                         </p>
                       </div>
                       <button
@@ -436,7 +675,7 @@ export default function NewActivityPage() {
                   </div>
                 )}
 
-                {/* SUBFLUJO 2: PANEL DE UBICACIONES EXTERNAS (ESTILO CONSERVADO) */}
+                {/* SUBFLUJO 2: UBICACIONES EXTERNAS */}
                 {(tipoUbicacion === 'externo' || tipoUbicacion === 'mixto') && (
                   <div className="mt-2 p-5 rounded-xl border border-emerald-100 bg-emerald-50/30 space-y-4">
                     <div className="flex items-center gap-2">
@@ -446,7 +685,7 @@ export default function NewActivityPage() {
                           Ubicaciones Externas
                         </h3>
                         <p className="text-xs text-emerald-800/80 mt-0.5">
-                          Busca y agrega uno o varios lugares. Se guardarán junto con la actividad.
+                          Busca y agrega uno o varios lugares fuera del campus institucional.
                         </p>
                       </div>
                     </div>
@@ -524,7 +763,6 @@ export default function NewActivityPage() {
                       </div>
                     </div>
 
-                    {/* Lista de ubicaciones externas agregadas */}
                     {externalLocations.length > 0 && (
                       <div className="space-y-2 pt-2">
                         <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -729,14 +967,17 @@ export default function NewActivityPage() {
               <button
                 type="button"
                 onClick={() => router.push('/activities')}
-                className="px-6 py-2.5 bg-[#5b6470] hover:bg-[#4a525d] text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+                disabled={isSubmitting}
+                className="px-6 py-2.5 bg-[#5b6470] hover:bg-[#4a525d] text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-[#5b141b] hover:bg-[#481015] text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#5b141b] hover:bg-[#481015] text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
               >
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Guardar Actividad
               </button>
             </div>

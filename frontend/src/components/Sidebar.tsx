@@ -20,7 +20,8 @@ import {
   Menu,
   X,
   User,
-  Bell,
+  Layers,
+  Bell
 } from 'lucide-react';
 
 const ADMIN_ROLES = ['superuser', 'reservation_manager'];
@@ -33,14 +34,19 @@ export function Sidebar() {
   const { data: session } = useSession();
   const user = session?.user;
   const userRole: string | undefined = user?.role;
-  const permissions = useMemo(() => user?.permissions || [], [user?.permissions]);
+  const userRoles: string[] = user?.roles || (userRole ? [userRole] : []);
+  const permissions: string[] = (user?.permissions as string[]) || [];
 
   const isSuperUser = useMemo(() => {
     return (
       permissions.includes('manage:all') ||
-      (userRole && ADMIN_ROLES.includes(userRole.toLowerCase()))
+      userRoles.some((r) => ADMIN_ROLES.includes(r.toLowerCase()))
     );
-  }, [permissions, userRole]);
+  }, [permissions, userRoles]);
+
+  const isDirective = useMemo(() => {
+    return userRoles.some((r) => ['directive', 'directivo'].includes(r.toLowerCase()));
+  }, [userRoles]);
 
   // Evaluaciones granulares de visibilidad por módulo
   const canSeeUsers = useMemo(() => {
@@ -50,6 +56,15 @@ export function Sidebar() {
   const canSeeActivities = useMemo(() => {
     return isSuperUser || permissions.some((p) => p.startsWith('activity:'));
   }, [isSuperUser, permissions]);
+
+  // Ejes y Objetivos exclusivo para Directivos, Superusuarios o con permisos de axes/objectives
+  const canSeeStrategic = useMemo(() => {
+    return (
+      isSuperUser ||
+      isDirective ||
+      permissions.some((p) => p.startsWith('axes:') || p.startsWith('objectives:'))
+    );
+  }, [isSuperUser, isDirective, permissions]);
 
   const canSeeSpaces = useMemo(() => {
     return isSuperUser || permissions.some((p) => p.startsWith('space:'));
@@ -78,6 +93,12 @@ export function Sidebar() {
         href: '/admin', 
         icon: Users,
         visible: canSeeUsers
+      },
+      { 
+        name: 'Ejes y Objetivos', 
+        href: '/strategic', 
+        icon: Layers,
+        visible: canSeeStrategic 
       },
       { 
         name: 'Actividades', 
@@ -115,6 +136,7 @@ export function Sidebar() {
     return items.filter((item) => item.visible);
   }, [
     canSeeUsers,
+    canSeeStrategic,
     canSeeActivities,
     canSeeSpaces,
     canSeeResources,

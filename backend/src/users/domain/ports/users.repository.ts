@@ -4,6 +4,7 @@ export interface CreateUserData {
   username: string | null;
   email: string;
   passwordHash: string;
+  departmentId?: string | null;
 }
 
 export abstract class UsersRepository {

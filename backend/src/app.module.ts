@@ -9,12 +9,14 @@ import { PermissionsModule } from './permissions/infrastructure/permissions.modu
 import { ReservationsModule } from './reservations/infrastructure/reservations.module.js';
 import { PlanningModule } from './planning/infrastructure/planning.module.js';
 import { NotificationsModule } from './notifications/infrastructure/notifications.module.js';
+import { DepartmentsModule } from './departments/infrastructure/departments.module.js';
 
 import { AppController } from './app.controller.js';
 
 @Module({
   imports: [
     ActivitiesModule,
+    DepartmentsModule,
     PrismaModule,
     AuthModule,
     UsersModule,

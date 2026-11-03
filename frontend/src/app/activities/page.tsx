@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
-import { ActivityModal } from "@/components/activities/ActivityModal";
 import { Button } from "@/components/ui/Button";
 import {
   Table,
@@ -24,28 +23,48 @@ import {
   BackendActivityStatus,
   ActivityApprovalDecision,
   ActivityApprovalDirection,
+  ActivityPersonnelMember,
+  ExternalLocation,
   getActivities,
-  updateActivity,
   updateActivityApproval,
-  attachActivityExternalLocations,
+  getActivityPersonnel,
   getActivityExternalLocations,
-  removeActivityExternalLocation,
-  setActivityPersonnel,
+  apiFetch,
 } from "@/lib/api";
 import {
   Loader2,
   Check,
   AlertTriangle,
   ShieldCheck,
-  Pencil,
   Plus,
+  Building2,
+  Eye,
+  X,
+  Calendar,
+  Users,
+  MapPin,
+  FileText,
+  Clock,
 } from "lucide-react";
+
+interface UserCapabilities {
+  canCreate: boolean;
+  canAssignCreator: boolean;
+  canViewAll: boolean;
+  canViewOwn: boolean;
+  canViewAssigned: boolean;
+  canUpdateAll: boolean;
+  canUpdateOwn: boolean;
+  canApprove: boolean;
+  canDelete: boolean;
+  approvalOptions: ActivityApprovalDirection[];
+}
 
 export default function ActivitiesPage() {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [currentUsername, setCurrentUsername] = useState<string | undefined>(undefined);
-  const [userDepartment, setUserDepartment] = useState<string | undefined>(undefined);
+  const [backendCapabilities, setBackendCapabilities] = useState<UserCapabilities | null>(null);
 
   const [activities, setActivities] = useState<BackendActivity[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -60,11 +79,13 @@ export default function ActivitiesPage() {
   } | null>(null);
   const [, startTransition] = useTransition();
 
-  // Estado para edición en modal
-  const [editingActivity, setEditingActivity] = useState<BackendActivity | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
-  // Dirección elegida manualmente solo por superusuarios
+  // Estados para Modal de Detalles
+  const [selectedDetailActivity, setSelectedDetailActivity] = useState<BackendActivity | null>(null);
+  const [detailPersonnel, setDetailPersonnel] = useState<ActivityPersonnelMember[]>([]);
+  const [detailLocations, setDetailLocations] = useState<ExternalLocation[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+
+  // Dirección manual elegida exclusivamente por Superusuario
   const [superUserDirections, setSuperUserDirections] = useState<
     Record<string, ActivityApprovalDirection>
   >({});
@@ -79,7 +100,6 @@ export default function ActivitiesPage() {
     setTimeout(() => setToastMessage(null), 3500);
   }, []);
 
-  // Matriz RBAC
   const isSuperUser = useMemo(() => {
     return (
       permissions.includes("manage:all") ||
@@ -87,52 +107,38 @@ export default function ActivitiesPage() {
     );
   }, [permissions]);
 
+  const assignedDirection = useMemo<ActivityApprovalDirection | null>(() => {
+    if (isSuperUser) return null;
+    const opts = backendCapabilities?.approvalOptions || [];
+    return opts.length > 0 ? opts[0] : null;
+  }, [isSuperUser, backendCapabilities]);
+
   const canApprove = useMemo(() => {
-    return isSuperUser || permissions.includes("activity:approve_all");
-  }, [isSuperUser, permissions]);
+    if (isSuperUser) return true;
+    return Boolean(
+      backendCapabilities?.canApprove &&
+      backendCapabilities.approvalOptions &&
+      backendCapabilities.approvalOptions.length > 0
+    );
+  }, [isSuperUser, backendCapabilities]);
 
   const canViewAll = useMemo(() => {
-    return isSuperUser || permissions.includes("activity:view_all");
-  }, [isSuperUser, permissions]);
+    return (
+      isSuperUser ||
+      Boolean(backendCapabilities?.canViewAll) ||
+      permissions.includes("activity:view_all")
+    );
+  }, [isSuperUser, backendCapabilities, permissions]);
 
   const canCreate = useMemo(() => {
-    return isSuperUser || permissions.includes("activity:create_own");
-  }, [isSuperUser, permissions]);
-
-  const canEditAll = useMemo(() => {
-    return isSuperUser || permissions.includes("activity:update_all");
-  }, [isSuperUser, permissions]);
-
-  const canEditOwn = useMemo(() => {
-    return permissions.includes("activity:update_own");
-  }, [permissions]);
+    return (
+      isSuperUser ||
+      Boolean(backendCapabilities?.canCreate) ||
+      permissions.includes("activity:create_own")
+    );
+  }, [isSuperUser, backendCapabilities, permissions]);
 
   const canShowAllTabs = canViewAll || isSuperUser;
-
-  // Detección institucional de la dirección a partir del departamento del usuario
-  const assignedDirection = useMemo<ActivityApprovalDirection | null>(() => {
-    if (isSuperUser) return null; // El superusuario conserva la opción de auditar cualquier área
-    const dept = (userDepartment || "").toLowerCase();
-    if (dept.includes("acad")) return "academic";
-    if (dept.includes("admin")) return "administrative";
-    if (dept.includes("plan")) return "planning";
-    return "planning"; // Valor institucional por defecto si es directivo sin clasificar
-  }, [isSuperUser, userDepartment]);
-
-  const canEditActivity = (activity: BackendActivity) => {
-    if (canEditAll) return true;
-    if (canEditOwn) {
-      const isOwner =
-        (currentUserId &&
-          (activity.creator?.userId === currentUserId ||
-            activity.creatorId === currentUserId)) ||
-        (currentUsername &&
-          activity.creator?.username?.toLowerCase() ===
-            currentUsername.toLowerCase());
-      return Boolean(isOwner);
-    }
-    return false;
-  };
 
   const roleScope = useMemo<"superuser" | "directive" | "lead">(() => {
     if (isSuperUser) return "superuser";
@@ -140,7 +146,19 @@ export default function ActivitiesPage() {
     return "lead";
   }, [isSuperUser, canApprove, canViewAll]);
 
-  // Carga de datos
+  const formatDirectionName = (dir: ActivityApprovalDirection | null) => {
+    switch (dir) {
+      case "planning":
+        return "Planeación";
+      case "academic":
+        return "Académica";
+      case "administrative":
+        return "Administración";
+      default:
+        return "";
+    }
+  };
+
   const refreshData = useCallback(async () => {
     try {
       setLoading(true);
@@ -148,7 +166,6 @@ export default function ActivitiesPage() {
       let fetchedPermissions: string[] = [];
       let userId: string | undefined = undefined;
       let username: string | undefined = undefined;
-      let departmentName: string | undefined = undefined;
 
       try {
         const { getSession } = await import("next-auth/react");
@@ -157,20 +174,27 @@ export default function ActivitiesPage() {
         fetchedPermissions = session?.user?.permissions || [];
         userId = session?.user?.id;
         username = session?.user?.name || undefined;
-        departmentName = (session?.user as any)?.department || (session?.user as any)?.departmentName;
 
         setPermissions(fetchedPermissions);
         setCurrentUserId(userId);
         setCurrentUsername(username);
-        setUserDepartment(departmentName);
       } catch (err) {
         console.error("Error al sincronizar sesión:", err);
+      }
+
+      let caps: UserCapabilities | null = null;
+      try {
+        caps = await apiFetch<UserCapabilities>("/activities/capabilities");
+        setBackendCapabilities(caps);
+      } catch (err) {
+        console.error("Error al consultar capabilities:", err);
       }
 
       const hasAccessToAll =
         fetchedPermissions.includes("manage:all") ||
         fetchedPermissions.includes("activity:manage") ||
-        fetchedPermissions.includes("activity:view_all");
+        fetchedPermissions.includes("activity:view_all") ||
+        Boolean(caps?.canViewAll || caps?.canApprove);
 
       setActiveTab(hasAccessToAll ? "all" : "mine");
 
@@ -204,74 +228,48 @@ export default function ActivitiesPage() {
     return () => window.clearTimeout(initialLoad);
   }, [refreshData]);
 
-  const handleSaveActivity = async (
-    data: {
-      title: string;
-      description?: string;
-      startDate: string;
-      endDate: string;
-      creatorId?: string;
-      externalLocations: import("@/lib/api").ExternalLocationInput[];
-      spaceIds: string[];
-      reserveStartTime?: string;
-      reserveEndTime?: string;
-      personnelIds: string[];
-    },
-    activityId?: string,
-  ) => {
+  // Manejo de apertura del modal de detalles
+  const handleOpenDetails = async (activity: BackendActivity) => {
+    setSelectedDetailActivity(activity);
+    setLoadingDetails(true);
     try {
-      const validCreatorId =
-        isSuperUser && data.creatorId && data.creatorId.trim().length > 0
-          ? data.creatorId.trim()
-          : undefined;
+      const [personnelRes, locationsRes] = await Promise.allSettled([
+        getActivityPersonnel(activity.activityId),
+        getActivityExternalLocations(activity.activityId),
+      ]);
 
-      if (activityId) {
-        const res = await updateActivity(activityId, {
-          title: data.title,
-          description: data.description || null,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          ...(validCreatorId ? { creatorId: validCreatorId } : {}),
-        });
-
-        if (res?.activity) {
-          const existingLocations = await getActivityExternalLocations(activityId).catch(() => ({ locations: [] }));
-          const selectedPlaceIds = new Set(data.externalLocations.map((l) => l.googlePlaceId));
-          
-          await Promise.all(
-            existingLocations.locations
-              .filter((l) => !selectedPlaceIds.has(l.googlePlaceId))
-              .map((l) => removeActivityExternalLocation(activityId, l.locationId))
-          );
-          
-          const knownPlaceIds = new Set(existingLocations.locations.map((l) => l.googlePlaceId));
-          const newLocations = data.externalLocations.filter((l) => !knownPlaceIds.has(l.googlePlaceId));
-          
-          if (newLocations.length) await attachActivityExternalLocations(activityId, newLocations);
-          if (isSuperUser) await setActivityPersonnel(activityId, data.personnelIds);
-          
-          startTransition(() => {
-            setActivities((prev) =>
-              prev.map((a) => (a.activityId === activityId ? res.activity : a))
-            );
-          });
-          showToast("success", "Actividad actualizada exitosamente.");
-        }
+      if (personnelRes.status === "fulfilled" && personnelRes.value?.users) {
+        setDetailPersonnel(personnelRes.value.users);
+      } else {
+        setDetailPersonnel([]);
       }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Error al actualizar la actividad.";
-      showToast("error", message);
+
+      if (locationsRes.status === "fulfilled" && locationsRes.value?.locations) {
+        setDetailLocations(locationsRes.value.locations);
+      } else {
+        setDetailLocations([]);
+      }
+    } catch {
+      setDetailPersonnel([]);
+      setDetailLocations([]);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
   const handleUpdateStatus = async (
     activityId: string,
-    direction: ActivityApprovalDirection,
+    direction: ActivityApprovalDirection | null,
     newStatus: ActivityApprovalDecision,
     dates?: { startDate: string; endDate: string },
   ) => {
     if (!canApprove) {
       showToast("error", "No cuentas con privilegios de dictamen para autorizar o rechazar.");
+      return;
+    }
+
+    if (!direction || !["planning", "academic", "administrative"].includes(direction)) {
+      showToast("error", "No se identificó una dirección válida para emitir este dictamen.");
       return;
     }
 
@@ -293,13 +291,7 @@ export default function ActivitiesPage() {
       setReschedulingActivity(null);
       showToast(
         "success",
-        `Dictamen de ${
-          direction === "planning"
-            ? "Planeación"
-            : direction === "academic"
-            ? "Académica"
-            : "Administración"
-        } registrado.`,
+        `Dictamen de ${formatDirectionName(direction)} registrado.`,
       );
     } catch (error) {
       await refreshData();
@@ -352,12 +344,9 @@ export default function ActivitiesPage() {
   const actionBtn = "cursor-pointer h-9 md:h-8 rounded-lg text-xs font-semibold active:scale-95 transition-all";
 
   const renderActions = (activity: BackendActivity) => {
-    const userCanEditThis = canEditActivity(activity);
-    
-    // Si es superusuario usa su selección local; si es directivo usa su departamento asignado
-    const activeDirection: ActivityApprovalDirection = isSuperUser
+    const activeDirection: ActivityApprovalDirection | null = isSuperUser
       ? (superUserDirections[activity.activityId] ?? "planning")
-      : (assignedDirection ?? "planning");
+      : assignedDirection;
 
     const newDates = rescheduleDates[activity.activityId] ?? {
       startDate: activity.startDate?.slice(0, 10) ?? "",
@@ -374,36 +363,33 @@ export default function ActivitiesPage() {
       }[status]);
 
     return (
-      <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
-        {userCanEditThis && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditingActivity(activity);
-              setIsEditModalOpen(true);
-            }}
-            className={`${actionBtn} text-primary border-primary/40 hover:bg-secondary flex items-center gap-1`}
-          >
-            <Pencil className="h-3 w-3" />
-            Editar
-          </Button>
-        )}
+      <div className="flex flex-col gap-2 items-end">
+        {/* BOTÓN GENERAL DE DETALLES: Accesible para todos los usuarios */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void handleOpenDetails(activity)}
+          className="h-8 px-3 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border-slate-300 flex items-center gap-1.5 cursor-pointer shadow-xs"
+        >
+          <Eye className="h-3.5 w-3.5 text-blue-600" />
+          Ver detalles del evento
+        </Button>
 
         {canApprove && (
-          <div className="basis-full space-y-2 rounded-xl border border-border bg-secondary/30 p-3">
+          <div className="w-full space-y-2 rounded-xl border border-border bg-secondary/30 p-3 text-left">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold text-foreground">
                 Dictamen Colegiado
               </p>
-              {!isSuperUser && (
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase">
-                  Área: {activeDirection === "planning" ? "Planeación" : activeDirection === "academic" ? "Académica" : "Administración"}
+              {!isSuperUser && activeDirection && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 uppercase">
+                  <Building2 className="h-3 w-3" />
+                  Área: {formatDirectionName(activeDirection)}
                 </span>
               )}
             </div>
 
-            {/* Chips de estado por dirección */}
+            {/* Sellos de estado por cada una de las 3 direcciones */}
             <div className="flex flex-wrap gap-2 text-[11px]">
               {(
                 [
@@ -425,7 +411,6 @@ export default function ActivitiesPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              {/* SELECTOR MANUAL: Exclusivo para Superusuarios */}
               {isSuperUser && (
                 <>
                   <label className="sr-only" htmlFor={`approval-${activity.activityId}`}>
@@ -433,7 +418,7 @@ export default function ActivitiesPage() {
                   </label>
                   <select
                     id={`approval-${activity.activityId}`}
-                    value={activeDirection}
+                    value={activeDirection ?? "planning"}
                     onChange={(event) =>
                       setSuperUserDirections((current) => ({
                         ...current,
@@ -450,7 +435,6 @@ export default function ActivitiesPage() {
                 </>
               )}
 
-              {/* Botones de acción institucional */}
               {(
                 [
                   ["approved", "Aprobar"],
@@ -464,15 +448,18 @@ export default function ActivitiesPage() {
                   variant="outline"
                   disabled={
                     savingApprovalFor === activity.activityId ||
+                    !activeDirection ||
                     activity.approvals?.[activeDirection] === status
                   }
-                  onClick={() =>
-                    void handleUpdateStatus(
-                      activity.activityId,
-                      activeDirection,
-                      status as ActivityApprovalDecision,
-                    )
-                  }
+                  onClick={() => {
+                    if (activeDirection) {
+                      void handleUpdateStatus(
+                        activity.activityId,
+                        activeDirection,
+                        status as ActivityApprovalDecision,
+                      );
+                    }
+                  }}
                   className={`${actionBtn} ${
                     status === "approved"
                       ? "text-uno-olivo border-uno-olivo/50 hover:bg-uno-verde"
@@ -488,7 +475,7 @@ export default function ActivitiesPage() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={savingApprovalFor === activity.activityId}
+                disabled={savingApprovalFor === activity.activityId || !activeDirection}
                 onClick={() =>
                   setReschedulingActivity((current) =>
                     current === activity.activityId ? null : activity.activityId,
@@ -500,7 +487,6 @@ export default function ActivitiesPage() {
               </Button>
             </div>
 
-            {/* Panel para reprogramación */}
             {reschedulingActivity === activity.activityId && (
               <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
                 <label className="space-y-1 text-xs font-medium">
@@ -544,18 +530,21 @@ export default function ActivitiesPage() {
                   size="sm"
                   disabled={
                     savingApprovalFor === activity.activityId ||
+                    !activeDirection ||
                     !newDates.startDate ||
                     !newDates.endDate ||
                     newDates.endDate < newDates.startDate
                   }
-                  onClick={() =>
-                    void handleUpdateStatus(
-                      activity.activityId,
-                      activeDirection,
-                      "rescheduled",
-                      newDates,
-                    )
-                  }
+                  onClick={() => {
+                    if (activeDirection) {
+                      void handleUpdateStatus(
+                        activity.activityId,
+                        activeDirection,
+                        "rescheduled",
+                        newDates,
+                      );
+                    }
+                  }}
                   className={actionBtn}
                 >
                   Confirmar reprogramación
@@ -563,16 +552,6 @@ export default function ActivitiesPage() {
               </div>
             )}
           </div>
-        )}
-
-        {!userCanEditThis && !canApprove && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-9 md:h-8 text-muted-foreground hover:text-foreground rounded-lg text-xs font-medium"
-          >
-            Ver detalles
-          </Button>
         )}
       </div>
     );
@@ -764,21 +743,180 @@ export default function ActivitiesPage() {
             )}
           </div>
 
-          {editingActivity && (
-            <ActivityModal
-              userRole={roleScope}
-              canReserve={
-                isSuperUser ||
-                permissions.some((p) => p.startsWith("reservation:"))
-              }
-              initialActivity={editingActivity}
-              isOpen={isEditModalOpen}
-              onOpenChange={(val) => {
-                setIsEditModalOpen(val);
-                if (!val) setEditingActivity(null);
-              }}
-              onSave={handleSaveActivity}
-            />
+          {/* MODAL INSTITUCIONAL PARA VER DETALLES DE LA ACTIVIDAD */}
+          {selectedDetailActivity && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+              <div className="bg-card w-full max-w-2xl max-h-[90vh] rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between p-5 border-b border-border bg-secondary/20">
+                  <div className="flex items-center gap-2.5">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <div>
+                      <h2 className="text-base font-extrabold text-foreground">
+                        Expediente de la Actividad
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        Revisión de alcances y recursos institucionales
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDetailActivity(null)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-5">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Nombre de la actividad
+                    </span>
+                    <h3 className="text-lg font-bold text-foreground mt-0.5">
+                      {selectedDetailActivity.title || "Sin título asignado"}
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-secondary/30 border border-border">
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-[11px] font-semibold text-muted-foreground">Periodo programado</p>
+                        <p className="text-xs font-bold text-foreground">
+                          {selectedDetailActivity.startDate || "N/A"} al {selectedDetailActivity.endDate || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Users className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-[11px] font-semibold text-muted-foreground">Titular / Creador</p>
+                        <p className="text-xs font-bold text-foreground">
+                          {selectedDetailActivity.creator?.username || "Usuario no especificado"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedDetailActivity.description && (
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" />
+                        Descripción Detallada
+                      </span>
+                      <p className="text-xs text-foreground bg-secondary/20 p-3 rounded-xl border border-border leading-relaxed">
+                        {selectedDetailActivity.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Colaboradores asignados */}
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5" />
+                      Personal y Colaboradores Asignados
+                    </span>
+                    {loadingDetails ? (
+                      <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        Cargando colaboradores...
+                      </div>
+                    ) : detailPersonnel.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic bg-secondary/10 p-3 rounded-xl border border-border">
+                        No se asignaron colaboradores específicos para esta actividad.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {detailPersonnel.map((u) => (
+                          <div
+                            key={u.userId}
+                            className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2 text-xs"
+                          >
+                            <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                              {u.username?.charAt(0).toUpperCase() || "U"}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground truncate">{u.username}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Ubicaciones externas */}
+                  {detailLocations.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                        Ubicaciones Externas
+                      </span>
+                      <div className="space-y-2">
+                        {detailLocations.map((loc) => (
+                          <div
+                            key={loc.locationId}
+                            className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/30 text-xs flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-bold text-emerald-950">{loc.name}</p>
+                              <p className="text-emerald-800/80">{loc.formattedAddress}</p>
+                            </div>
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-md transition-colors"
+                            >
+                              Ver en Maps
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Estado del Dictamen Colegiado */}
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Estatus del Dictamen Colegiado
+                    </span>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2.5 rounded-xl border border-border bg-background">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Planeación</p>
+                        <p className="font-bold text-foreground mt-1 capitalize">
+                          {selectedDetailActivity.approvals?.planning ?? "Pendiente"}
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-xl border border-border bg-background">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Académica</p>
+                        <p className="font-bold text-foreground mt-1 capitalize">
+                          {selectedDetailActivity.approvals?.academic ?? "Pendiente"}
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-xl border border-border bg-background">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Administración</p>
+                        <p className="font-bold text-foreground mt-1 capitalize">
+                          {selectedDetailActivity.approvals?.administrative ?? "Pendiente"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-border bg-secondary/10 flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedDetailActivity(null)}
+                    className="px-5 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Cerrar Expediente
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </main>

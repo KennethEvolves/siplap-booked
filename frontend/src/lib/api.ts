@@ -14,7 +14,6 @@ export class ApiError extends Error {
   }
 }
 
-// Elimina credenciales del flujo anterior al iniciar o cerrar sesión.
 export function removeToken() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("accessToken");
@@ -92,6 +91,7 @@ export async function apiFetch<T>(
 
   return data as T;
 }
+
 export interface UserProfileResponse {
   profile: {
     userId: string;
@@ -152,10 +152,6 @@ export async function updateUserProfile(
   });
 }
 
-// ==========================================
-// Módulo de Actividades (RBAC + Workflows)
-// ==========================================
-
 export type BackendActivityStatus =
   "pending" | "approved" | "rejected" | "cancelled" | "rescheduled";
 
@@ -207,8 +203,15 @@ export interface CreateActivityInput {
   description?: string | null;
   startDate: string;
   endDate: string;
+  objectiveId?: string;
+  type?: "ordinary" | "extraordinary" | "entry";
+  requiresAuthority?: boolean;
+  requiresCertified?: boolean;
+  generalObservation?: string | null;
   creatorId?: string;
   externalLocations?: ExternalLocationInput[];
+  spaceIds?: string[];
+  personnelIds?: string[];
 }
 
 export async function getActivities(): Promise<{
@@ -252,6 +255,11 @@ export interface UpdateActivityInput {
   description?: string | null;
   startDate?: string;
   endDate?: string;
+  objectiveId?: string;
+  type?: "ordinary" | "extraordinary" | "entry";
+  requiresAuthority?: boolean;
+  requiresCertified?: boolean;
+  generalObservation?: string | null;
   creatorId?: string;
 }
 
@@ -309,10 +317,6 @@ export async function setActivityPersonnel(
     body: JSON.stringify({ userIds }),
   });
 }
-
-// ==========================================
-// Módulo de Reservaciones (RBAC)
-// ==========================================
 
 export type ReservationStatus =
   "pending" | "reserved" | "active" | "in_use" | "cancelled" | "completed";
@@ -468,5 +472,43 @@ export async function markNotificationRead(
 ): Promise<void> {
   await apiFetch(`/api/notifications/${notificationId}/read`, {
     method: "PATCH",
+  });
+}
+
+export interface Department {
+  department_id: string;
+  name: string;
+  description: string | null;
+}
+
+export async function getDepartments(): Promise<{ departments: Department[] }> {
+  return apiFetch<{ departments: Department[] }>('/api/departments', {
+    method: 'GET',
+  });
+}
+
+export async function createDepartment(data: {
+  name: string;
+  description?: string;
+}): Promise<{ department: Department }> {
+  return apiFetch<{ department: Department }>('/api/departments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDepartment(
+  id: string,
+  data: { name?: string; description?: string }
+): Promise<{ department: Department }> {
+  return apiFetch<{ department: Department }>(`/api/departments/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDepartment(id: string): Promise<void> {
+  return apiFetch<void>(`/api/departments/${id}`, {
+    method: "DELETE",
   });
 }

@@ -36,6 +36,7 @@ const select = {
   updated_at: true,
   users: { select: { user_id: true, username: true } },
 } satisfies Prisma.activitiesSelect;
+
 function map(
   row: Prisma.activitiesGetPayload<{ select: typeof select }>,
 ): Activity {
@@ -61,6 +62,7 @@ function map(
     updatedAt: row.updated_at?.toISOString() ?? null,
   };
 }
+
 function data(input: UpdateActivity) {
   return {
     title: input.title,
@@ -81,20 +83,58 @@ function data(input: UpdateActivity) {
     updated_at: new Date(),
   };
 }
+
 @Injectable()
 export class PrismaActivitiesRepository implements ActivitiesRepository {
   constructor(private readonly prisma: PrismaService) {}
+
   async permissions(userId: string) {
-    const rows = await this.prisma.permissions.findMany({
-      where: {
-        role_permissions: {
-          some: { roles: { user_roles: { some: { user_id: userId } } } },
+    const [permissionRows, user] = await Promise.all([
+      this.prisma.permissions.findMany({
+        where: {
+          role_permissions: {
+            some: { roles: { user_roles: { some: { user_id: userId } } } },
+          },
         },
-      },
-      select: { slug: true },
-    });
-    return rows.map((row) => row.slug);
+        select: { slug: true },
+      }),
+      this.prisma.users.findUnique({
+        where: { user_id: userId },
+        select: {
+          department_id: true,
+        },
+      }),
+    ]);
+
+    const slugs = permissionRows.map((row) => row.slug);
+
+    if (user?.department_id) {
+      const dept = await this.prisma.departments.findUnique({
+        where: { department_id: user.department_id },
+        select: { name: true },
+      });
+
+      if (dept?.name) {
+        const deptName = dept.name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+        if (deptName.includes('planeacion')) {
+          slugs.push('activity:approve_planning');
+        }
+        if (deptName.includes('academica')) {
+          slugs.push('activity:approve_academic');
+        }
+        if (deptName.includes('administracion') || deptName.includes('finanzas')) {
+          slugs.push('activity:approve_administrative');
+        }
+      }
+    }
+
+    return slugs;
   }
+
   async list(query: ActivityList, creatorId?: string, assignedUserId?: string) {
     const where: Prisma.activitiesWhereInput = {};
     if (creatorId && assignedUserId) {
@@ -119,6 +159,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
     ]);
     return { activities: rows.map(map), total };
   }
+
   async find(activityId: string, creatorId?: string, assignedUserId?: string) {
     const row = await this.prisma.activities.findFirst({
       where: {
@@ -140,6 +181,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
     });
     return row ? map(row) : null;
   }
+
   async creators(query: ActivityList) {
     const where = { user_statuses: { name: 'ACTIVE' } };
     const [rows, total] = await this.prisma.$transaction([
@@ -160,12 +202,14 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       total,
     };
   }
+
   async activeCreator(userId: string) {
     return !!(await this.prisma.users.findFirst({
       where: { user_id: userId, user_statuses: { name: 'ACTIVE' } },
       select: { user_id: true },
     }));
   }
+
   async report(activityId: string): Promise<ActivityReport | null> {
     const report = await this.prisma.activity_reports.findUnique({
       where: { activity_id: activityId },
@@ -190,6 +234,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       updatedAt: report.updated_at?.toISOString() ?? null,
     };
   }
+
   async externalLocations(activityId: string): Promise<ExternalLocation[]> {
     const rows = await this.prisma.activity_external_locations.findMany({
       where: { activity_id: activityId },
@@ -205,6 +250,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       longitude: Number(locations.longitude),
     }));
   }
+
   async attachExternalLocations(
     activityId: string,
     locations: ExternalLocationInput[],
@@ -237,6 +283,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
     });
     return this.externalLocations(activityId);
   }
+
   async removeExternalLocation(activityId: string, locationId: string) {
     const result = await this.prisma.activity_external_locations.deleteMany({
       where: { activity_id: activityId, location_id: locationId },
@@ -247,6 +294,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
         'Ubicación no encontrada para la actividad',
       );
   }
+
   async activityPersonnel(
     activityId: string,
   ): Promise<ActivityPersonnelMember[]> {
@@ -263,6 +311,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       email: users.email,
     }));
   }
+
   async setActivityPersonnel(
     activityId: string,
     input: ActivityPersonnelInput,
@@ -306,6 +355,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
     );
     return this.activityPersonnel(activityId);
   }
+
   async create(input: CreateActivity & { creatorId: string }) {
     return prismaWrite(() =>
       this.prisma.$transaction(async (tx) => {
@@ -343,6 +393,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       }),
     );
   }
+
   async update(activityId: string, input: UpdateActivity, creatorId?: string) {
     try {
       return await prismaWrite(() =>
@@ -390,6 +441,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       throw error;
     }
   }
+
   async approve(activityId: string, input: ApproveActivity) {
     const { direction, status } = input;
     if (status === 'rescheduled' && (!input.startDate || !input.endDate)) {
@@ -650,6 +702,7 @@ export class PrismaActivitiesRepository implements ActivitiesRepository {
       }
     });
   }
+
   async delete(activityId: string) {
     await prismaWrite(() =>
       this.prisma.activities.delete({ where: { activity_id: activityId } }),

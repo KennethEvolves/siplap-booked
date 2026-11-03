@@ -8,7 +8,8 @@ import {
   CalendarCheck, 
   CalendarDays, 
   ShieldCheck, 
-  LogOut 
+  LogOut,
+  Layers
 } from 'lucide-react';
 
 interface DashboardContentProps {
@@ -29,36 +30,28 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     )
   );
 
-  const permissions: string[] = isSuperUser
-    ? [
-        'manage:all',
-        'users:create',
-        'users:read',
-        'users:update',
-        'users:delete',
-        'activity:manage',
-        'activity:view_all',
-        'activity:approve_all',
-        'activity:update_all',
-        'activity:create_own',
-        'activity:view_own',
-        'activity:update_own',
-        'reservation:manage',
-        'reservation:create_own',
-        'reservation:view_own',
-        'reservation:view_all',
-        'reservation:update_own',
-        'reservation:delete_own',
-      ]
-    : (user?.permissions ?? []);
+  const isDirective = roles.some((r) =>
+    ['DIRECTIVO', 'DIRECTIVE'].includes(r.toUpperCase())
+  );
+
+  // Usamos los permisos reales que vienen del backend
+  const permissions: string[] = user?.permissions ?? [];
 
   const hasPermission = (slug: string): boolean => {
-    if (permissions.includes('manage:all')) return true;
+    if (isSuperUser || permissions.includes('manage:all')) return true;
     return permissions.includes(slug);
   };
 
+  // 1. Acceso a Usuarios y Roles
   const canAccessUsers = isSuperUser || hasPermission('users:read');
 
+  // 2. Acceso a Ejes y Objetivos (Directivos, Superusuarios o permisos de axes/objectives)
+  const canAccessStrategic =
+    isSuperUser ||
+    isDirective ||
+    permissions.some((p) => p.startsWith('axes:') || p.startsWith('objectives:'));
+
+  // 3. Acceso a Actividades
   const canAccessActivities =
     isSuperUser ||
     hasPermission('activity:manage') ||
@@ -66,6 +59,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     hasPermission('activity:view_own') ||
     hasPermission('activity:create_own');
 
+  // 4. Acceso a Reservaciones
   const canAccessReservations =
     isSuperUser ||
     hasPermission('reservation:manage') ||
@@ -73,8 +67,12 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     hasPermission('reservation:view_own') ||
     hasPermission('reservation:create_own');
 
-  // Cantidad de módulos visibles
-  const hasAnyModule = canAccessUsers || canAccessActivities || canAccessReservations;
+  // Comprobar si al menos un módulo es visible
+  const hasAnyModule =
+    canAccessUsers ||
+    canAccessStrategic ||
+    canAccessActivities ||
+    canAccessReservations;
 
   return (
     <div className="flex min-h-screen bg-secondary/40">
@@ -109,14 +107,14 @@ export default function DashboardContent({ user }: DashboardContentProps) {
 
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] text-sm font-semibold text-primary bg-card hover:bg-secondary px-4 py-2.5 rounded-xl transition-colors border border-primary"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] text-sm font-semibold text-primary bg-card hover:bg-secondary px-4 py-2.5 rounded-xl transition-colors border border-primary cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               Cerrar sesión
             </button>
           </header>
 
-          {/* Módulos principales: solo se renderizan a los que tiene acceso */}
+          {/* Módulos principales condicionados por permisos */}
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-foreground">Módulos principales</h2>
 
@@ -127,7 +125,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 
-                {/* Tarjeta 1: Usuarios y Roles */}
+                {/* Tarjeta 1: Usuarios y Roles (Superusuario) */}
                 {canAccessUsers && (
                   <Link
                     href="/admin"
@@ -151,7 +149,31 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                   </Link>
                 )}
 
-                {/* Tarjeta 2: Actividades */}
+                {/* Tarjeta 2: Ejes y Objetivos (Directivos y Superusuarios) */}
+                {canAccessStrategic && (
+                  <Link
+                    href="/strategic"
+                    className="group p-5 md:p-6 bg-card rounded-2xl border border-border shadow-sm hover:border-amber-600 hover:ring-2 hover:ring-amber-500/10 transition-all flex flex-col justify-between space-y-4"
+                  >
+                    <div className="space-y-3">
+                      <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Layers className="h-6 w-6" />
+                      </div>
+                      <h3 className="text-base font-bold text-foreground group-hover:text-amber-700 transition-colors">
+                        Ejes y Objetivos
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Configura los ejes rectores de desarrollo institucional y los objetivos estratégicos de la universidad.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-amber-700">
+                      <span>Acceder a planeación</span>
+                      <span className="transition-transform group-hover:translate-x-1">→</span>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Tarjeta 3: Actividades */}
                 {canAccessActivities && (
                   <Link
                     href="/activities"
@@ -175,7 +197,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                   </Link>
                 )}
 
-                {/* Tarjeta 3: Reservaciones */}
+                {/* Tarjeta 4: Reservaciones */}
                 {canAccessReservations && (
                   <Link
                     href="/reservations"
